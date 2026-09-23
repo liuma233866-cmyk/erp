@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS publish_batches (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  public_id VARCHAR(40) NOT NULL,
+  company_id BIGINT UNSIGNED NOT NULL,
+  requested_by BIGINT UNSIGNED NULL,
+  status VARCHAR(40) NOT NULL,
+  requested_item_count INT UNSIGNED NOT NULL DEFAULT 0,
+  job_count INT UNSIGNED NOT NULL DEFAULT 0,
+  estimated_cost DECIMAL(12,4) NOT NULL DEFAULT 0,
+  actual_cost DECIMAL(12,4) NOT NULL DEFAULT 0,
+  estimated_seconds INT UNSIGNED NOT NULL DEFAULT 0,
+  request_namespace VARCHAR(64) NOT NULL,
+  client_request_id VARCHAR(128) NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  finished_at DATETIME(3) NULL,
+  row_version BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_publish_batches_public_id (public_id),
+  UNIQUE KEY uq_publish_batches_request (company_id, request_namespace, client_request_id),
+  KEY ix_publish_batches_company_status (company_id, status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

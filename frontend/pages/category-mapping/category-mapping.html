@@ -1,0 +1,86 @@
+          <section id="categoryMappingPanel" class="panel hidden">
+            <div class="panel-head category-mapping-panel-head">
+              <div class="category-mapping-head-copy">
+                <span class="catalog-head-eyebrow">插件共享知识</span>
+                <h3>类目映射</h3>
+                <p class="catalog-head-subtle">集中维护 Ozon 到 Yandex 的共享类目规则，并查看采集器回传的学习样本，让自动匹配越跑越准。</p>
+              </div>
+              <div class="head-actions category-mapping-head-actions">
+                <label class="category-mapping-platform">
+                  <span>来源平台</span>
+                  <select id="categoryMappingPlatformFilter">
+                    <option value="ozon">Ozon</option>
+                  </select>
+                </label>
+                <button id="refreshCategoryMappingBtn" type="button" class="secondary-btn">刷新</button>
+                <button id="openCategoryMappingRuleModalBtn" type="button" class="secondary-btn">添加规则</button>
+              </div>
+            </div>
+            <div class="category-mapping-summary-grid">
+              <article class="category-mapping-summary-card">
+                <span>共享规则</span>
+                <strong id="categoryMappingRuleCount">0</strong>
+                <small>平台、店铺、关键词和来源类目共同参与命中</small>
+              </article>
+              <article class="category-mapping-summary-card">
+                <span>学习样本</span>
+                <strong id="categoryMappingSampleCount">0</strong>
+                <small>来自采集器最终确认后的回传数据</small>
+              </article>
+              <article class="category-mapping-summary-card">
+                <span>最近同步</span>
+                <strong id="categoryMappingFetchedAt">-</strong>
+                <small>规则和样本会按当前登录公司与店铺权限自动过滤</small>
+              </article>
+            </div>
+            <p id="categoryMappingMessage" class="message small">类目映射知识尚未加载</p>
+            <div class="category-mapping-grid">
+              <section class="category-mapping-card">
+                <div class="category-mapping-card-head">
+                  <div>
+                    <h4>共享规则</h4>
+                    <p>优先命中手工规则，再回退到样本学习和插件本地智能匹配。</p>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>启用</th>
+                        <th>规则</th>
+                        <th>来源条件</th>
+                        <th>店铺</th>
+                        <th>目标类目</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="categoryMappingRulesTableBody"></tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="category-mapping-card">
+                <div class="category-mapping-card-head">
+                  <div>
+                    <h4>学习样本</h4>
+                    <p>这里显示插件确认过的结果，可以一键转成稳定规则。</p>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>来源类目</th>
+                        <th>商品特征</th>
+                        <th>学习结果</th>
+                        <th>次数</th>
+                        <th>最近学习</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="categoryMappingSamplesTableBody"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </section>

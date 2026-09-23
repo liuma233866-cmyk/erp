@@ -1,0 +1,318 @@
+          <section id="logisticsFeePanel" class="panel hidden">
+            <div class="panel-head">
+              <h3>物流费用</h3>
+            </div>
+            <div id="logisticsTabs" class="logistics-tabs platform-tabs">
+              <button class="tab active" data-logistics-tab="yandex">Yandex</button>
+            </div>
+
+            <section id="logisticsYandex" class="logistics-section">
+              <div id="yandexModelTabs" class="logistics-tabs model-tabs">
+                <button class="tab active" data-yandex-model="fbp">FBP</button>
+                <button class="tab" data-yandex-model="fbs">FBS</button>
+                <button class="tab" data-yandex-model="fbs_lm">FBS 末端</button>
+              </div>
+
+              <div class="logistics-card">
+                <div class="rate-title">费用计算器</div>
+                <div class="logistics-form">
+                  <label>
+                    <span>币种</span>
+                    <select id="yandexFeeCurrency">
+                      <option value="RUB" selected>RUB</option>
+                      <option value="USD">USD</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>包裹重量(kg)</span>
+                    <input id="yandexWeightKg" type="number" step="0.001" min="0" placeholder="例如 4.5" />
+                  </label>
+                  <label>
+                    <span>基础费</span>
+                    <input id="yandexBaseFee" type="text" readonly />
+                  </label>
+                  <label>
+                    <span>每公斤费</span>
+                    <input id="yandexPerKgFee" type="text" readonly />
+                  </label>
+                </div>
+              </div>
+
+              <div class="logistics-result">
+                <div>
+                  <span>计费重量</span>
+                  <strong id="yandexChargeWeight">-</strong>
+                </div>
+                <div>
+                  <span>预估服务费</span>
+                  <strong id="yandexFeeTotal">-</strong>
+                </div>
+                <div id="yandexFeeHint">服务费=基础费+每公斤费×计费重量；计费重量为实重向上取整到0.1kg。</div>
+              </div>
+
+              <div class="yandex-rate-card">
+                <div id="rateModelTitle" class="rate-title">FBP</div>
+                <div class="rate-section" data-rate-section="fbp">
+                  <p class="rate-desc">总成本=固定处理费+按公斤计费（含包装）。</p>
+                  <div class="rate-country">中国</div>
+                  <div class="rate-table-wrap">
+                    <table class="rate-table">
+                      <thead>
+                        <tr>
+                          <th>服务</th>
+                          <th>方式</th>
+                          <th>费率</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>CEL</td>
+                          <td>快递</td>
+                          <td>
+                            <ul>
+                              <li>161₽/单</li>
+                              <li>715₽/kg</li>
+                            </ul>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>快递</td>
+                          <td>
+                            <ul>
+                              <li>183₽/单</li>
+                              <li>697₽/kg</li>
+                            </ul>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="rate-example">
+                    <div class="rate-example-title">示例</div>
+                    <div>包裹重量：4.5 kg。方式：快递。</div>
+                    <div>计算：4.5 × 715 + 161 = 3,378.5₽。</div>
+                  </div>
+                </div>
+
+                <div class="rate-section hidden" data-rate-section="fbs">
+                  <p class="rate-desc">运费取决于承运商与配送方式。</p>
+                  <p class="rate-desc">总成本=固定费用+按重量计费（含包装）。</p>
+                  <p class="rate-desc">可使用计算器快速估算成本。</p>
+                  <div class="rate-table-wrap">
+                    <table class="rate-table">
+                      <thead>
+                        <tr>
+                          <th>服务</th>
+                          <th>方式</th>
+                          <th>费率</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="rate-group"><td colspan="3">Ural</td></tr>
+                        <tr>
+                          <td>Ural</td>
+                          <td>特快</td>
+                          <td>182₽/单, 1,371₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>Ural</td>
+                          <td>特快小件</td>
+                          <td>81₽/单, 0.764₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>Ural</td>
+                          <td>快递</td>
+                          <td>182₽/单, 942₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>Ural</td>
+                          <td>快递小件</td>
+                          <td>81₽/单, 0.398₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>Ural</td>
+                          <td>经济</td>
+                          <td>182₽/单, 508₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>Ural</td>
+                          <td>经济小件</td>
+                          <td>81₽/单, 0.285₽/g.</td>
+                        </tr>
+
+                        <tr class="rate-group"><td colspan="3">UNI</td></tr>
+                        <tr>
+                          <td>UNI</td>
+                          <td>特快</td>
+                          <td>193₽/单, 1,000₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>UNI</td>
+                          <td>快递</td>
+                          <td>193₽/单, 686₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>UNI</td>
+                          <td>快递小件</td>
+                          <td>84₽/单, 0.341₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>UNI</td>
+                          <td>经济</td>
+                          <td>193₽/单, 423₽/kg.</td>
+                        </tr>
+
+                        <tr class="rate-group"><td colspan="3">GBS（GUOO）</td></tr>
+                        <tr>
+                          <td>GBS（GUOO）</td>
+                          <td>特快</td>
+                          <td>198₽/单, 1,090₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>GBS（GUOO）</td>
+                          <td>特快小件</td>
+                          <td>99₽/单, 0.531₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>GBS（GUOO）</td>
+                          <td>快递</td>
+                          <td>183₽/单, 710₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>GBS（GUOO）</td>
+                          <td>快递小件</td>
+                          <td>81₽/单, 0.431₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>GBS（GUOO）</td>
+                          <td>经济</td>
+                          <td>198₽/单, 433₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>GBS（GUOO）</td>
+                          <td>经济小件</td>
+                          <td>99₽/单, 0.211₽/g.</td>
+                        </tr>
+
+                        <tr class="rate-group"><td colspan="3">CEL</td></tr>
+                        <tr>
+                          <td>CEL</td>
+                          <td>快递</td>
+                          <td>161₽/单, 715₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>CEL</td>
+                          <td>快递小件</td>
+                          <td>78₽/单, 0.550₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>CEL</td>
+                          <td>经济</td>
+                          <td>161₽/单, 465₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>CEL</td>
+                          <td>经济小件</td>
+                          <td>78₽/单, 0.287₽/g.</td>
+                        </tr>
+
+                        <tr class="rate-group"><td colspan="3">ATC</td></tr>
+                        <tr>
+                          <td>ATC</td>
+                          <td>快递</td>
+                          <td>198₽/单, 787₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>ATC</td>
+                          <td>经济</td>
+                          <td>198₽/单, 506₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>ATC</td>
+                          <td>经济小件</td>
+                          <td>92₽/单, 0.217₽/g.</td>
+                        </tr>
+
+                        <tr class="rate-group"><td colspan="3">GUOO（GTA）</td></tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>特快</td>
+                          <td>196₽/单, 1,058₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>特快小件</td>
+                          <td>99₽/单, 0.525₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>快递</td>
+                          <td>183₽/单, 697₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>快递小件</td>
+                          <td>81₽/单, 0.428₽/g.</td>
+                        </tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>经济</td>
+                          <td>196₽/单, 415₽/kg.</td>
+                        </tr>
+                        <tr>
+                          <td>GUOO（GTA）</td>
+                          <td>经济小件</td>
+                          <td>99₽/单, 0.178₽/g.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="rate-example">
+                    <div class="rate-example-title">示例</div>
+                    <div>包裹重量：4.5 kg。方式：快递。</div>
+                    <div>计算：4.5 × 686 + 193 = 3,280₽。</div>
+                  </div>
+                  <div class="rate-example">
+                    <div>包裹重量：200 g。服务：ATC。方式：经济小件。</div>
+                    <div>计算：200 × 0.217 + 92 = 135.4₽。</div>
+                  </div>
+                </div>
+
+                <div class="rate-section hidden" data-rate-section="fbs_lm">
+                  <p class="rate-desc">总成本=固定处理费+按公斤计费（含包装）。</p>
+                  <div class="rate-table-wrap">
+                    <table class="rate-table">
+                      <thead>
+                        <tr>
+                          <th>服务</th>
+                          <th>方式</th>
+                          <th>费率</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>FBS 末端</td>
+                          <td>—</td>
+                          <td>
+                            <ul>
+                              <li>300₽/单</li>
+                              <li>100₽/kg</li>
+                            </ul>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="rate-example">
+                    <div class="rate-example-title">示例</div>
+                    <div>包裹重量：4.5 kg。</div>
+                    <div>计算：4.5 × 100 + 300 = 750₽。</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+          </section>

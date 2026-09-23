@@ -1,0 +1,95 @@
+          <section id="ordersPanel" class="panel hidden">
+            <div class="panel-head">
+              <h3 id="ordersWorkspaceTitle">订单管理</h3>
+              <div class="head-actions">
+                <button id="syncOrdersBtn" class="secondary-btn">同步订单</button>
+                <button id="syncLabelsBtn" class="secondary-btn">同步面单</button>
+                <button id="printLabelsBtn" class="secondary-btn">批量打印面单</button>
+              </div>
+            </div>
+
+            <div id="orderStatusMenu" class="order-status-menu">
+              <button type="button" class="menu-item hidden" data-status-menu="all" data-orders-v2-only>全部订单</button>
+              <button type="button" class="menu-item" data-status-menu="pending">新订单</button>
+              <button type="button" class="menu-item" data-status-menu="cancelled">作废</button>
+              <button type="button" class="menu-item" data-status-menu="shipped">已发货</button>
+              <button type="button" class="menu-item hidden" data-status-menu="receipt_unsigned" data-orders-v2-only>暂未签收</button>
+              <button type="button" class="menu-item hidden" data-status-menu="receipt_signed" data-orders-v2-only>已签收</button>
+              <button type="button" class="menu-item hidden" data-status-menu="receipt_exception" data-orders-v2-only>签收异常</button>
+            </div>
+
+            <form id="orderFilterForm" class="inline-form order-filter-form">
+              <input name="orderId" type="text" placeholder="订单号搜索框" />
+              <select name="shopName" id="orderShopFilter">
+                <option value="">店铺名称(全部)</option>
+              </select>
+              <input name="shopSku" type="text" placeholder="店铺SKU" />
+              <input name="itemCount" type="number" min="1" step="1" placeholder="数量" />
+              <input name="shopOrderNo" type="text" placeholder="店铺订单号" />
+              <input name="shopStatus" type="text" placeholder="店铺状态" />
+              <input name="trackingNo" type="text" placeholder="运单条码" />
+              <input name="domesticTrackingNo" type="text" placeholder="国内快递单号" />
+              <input name="purchaseOrderNo" type="text" placeholder="采购单号" />
+              <input name="purchasePlatform" type="text" placeholder="采购平台" />
+              <select name="purchaseStatus">
+                <option value="">采购状态(全部)</option>
+                <option value="purchased">已采购</option>
+                <option value="unpurchased">未采购</option>
+              </select>
+              <select name="customerReceiptCode">
+                <option value="">订单状态(全部)</option>
+                <option value="received">已收货 / Received</option>
+                <option value="ready_for_pickup">待顾客取件 / Ready for pickup</option>
+                <option value="in_delivery">配送中 / In delivery</option>
+                <option value="not_received">顾客未收到 / Customer not received</option>
+                <option value="returned">已退货 / Returned</option>
+              </select>
+              <input name="sellerOrderDate" type="date" placeholder="卖家下单时间" />
+              <button type="submit">搜索</button>
+              <button id="resetFilterBtn" type="button" class="secondary-btn">重置</button>
+            </form>
+            <p id="orderMessage" class="message small"></p>
+            <div id="globalSyncStatusBar" class="global-sync-status hidden" aria-live="polite">
+              <span class="global-sync-dot" aria-hidden="true"></span>
+              <span id="globalSyncStatusText">订单同步状态</span>
+            </div>
+            <div class="order-batch-bar">
+              <label class="checkbox-row">
+                <input id="orderSelectAll" type="checkbox" />
+                全选（当前页）
+              </label>
+              <div class="order-batch-actions">
+                <span id="orderSelectedCount" class="small-text">已选 0 条</span>
+                <button id="batchPurchaseBtn" type="button" class="secondary-btn">批量采购信息</button>
+                <button id="ordersPurchaseImportBtn" type="button" class="secondary-btn">导入采购</button>
+              </div>
+            </div>
+
+          <div id="ordersList" class="orders-list"></div>
+            <div class="pagination-row">
+              <button id="prevPageBtn" type="button" class="secondary-btn">上一页</button>
+              <span id="paginationInfo">第 1 页 / 共 1 页</span>
+              <button id="nextPageBtn" type="button" class="secondary-btn">下一页</button>
+            </div>
+            <div id="ordersPurchaseImportModalMask" class="modal-mask hidden">
+              <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ordersPurchaseImportModalTitle">
+                <div class="modal-head">
+                  <div>
+                    <h3 id="ordersPurchaseImportModalTitle">导入采购</h3>
+                    <p class="subtle">下载模板填写采购信息后导入；也可以先导出未采购订单，填好再导入。留空的列会保持订单原值不变。</p>
+                  </div>
+                  <button id="closeOrdersPurchaseImportBtn" type="button" class="secondary-btn">关闭</button>
+                </div>
+                <div class="order-batch-actions" style="margin-bottom:12px;">
+                  <button id="ordersPurchaseTemplateBtn" type="button" class="secondary-btn">下载导入模板</button>
+                  <button id="ordersPurchaseExportBtn" type="button" class="secondary-btn">导出未采购订单</button>
+                </div>
+                <form id="ordersPurchaseImportForm" class="modal-form">
+                  <label for="ordersPurchaseFileInput">选择填好的 Excel 文件</label>
+                  <input id="ordersPurchaseFileInput" name="file" type="file" accept=".xlsx,.xls" />
+                  <button id="ordersPurchaseSubmitBtn" type="submit">开始导入</button>
+                </form>
+                <p id="ordersPurchaseImportMessage" class="message small"></p>
+              </div>
+            </div>
+          </section>

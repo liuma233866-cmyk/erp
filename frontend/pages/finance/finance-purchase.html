@@ -1,0 +1,71 @@
+          <section id="financePurchasePanel" class="panel hidden">
+            <div class="panel-head">
+              <div>
+                <h3>采购</h3>
+              </div>
+            </div>
+            <div class="finance-summary-grid">
+              <article class="finance-summary-card">
+                <span>日采购 RMB</span>
+                <strong id="financeDayPurchaseRmb">0.00</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>日采购 RUB</span>
+                <strong id="financeDayPurchaseRub">0.00</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>周采购 RMB</span>
+                <strong id="financeWeekPurchaseRmb">0.00</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>周采购 RUB</span>
+                <strong id="financeWeekPurchaseRub">0.00</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>月采购 RMB</span>
+                <strong id="financeMonthPurchaseRmb">0.00</strong>
+              </article>
+              <article class="finance-summary-card">
+                <span>月采购 RUB</span>
+                <strong id="financeMonthPurchaseRub">0.00</strong>
+              </article>
+            </div>
+            <form id="financePurchaseFilterForm" class="inline-form finance-profit-filter-form">
+              <input id="financePurchaseFilterOrderNo" name="orderNo" type="text" placeholder="订单号（支持部分匹配）" />
+              <input id="financePurchaseFilterSku" name="sku" type="text" placeholder="SKU（支持部分匹配）" />
+              <input id="financePurchaseFilterPlatform" name="purchasePlatform" type="text" placeholder="采购平台（支持部分匹配）" />
+              <button type="submit">筛选</button>
+              <button id="financePurchaseFilterResetBtn" type="button" class="secondary-btn">重置</button>
+            </form>
+            <div class="table-wrap finance-purchase-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>订单号</th>
+                    <th>店铺</th>
+                    <th>SKU</th>
+                    <th>商品信息</th>
+                    <th>采购平台</th>
+                    <th>采购单号</th>
+                    <th>采购人民币</th>
+                    <th>采购卢布</th>
+                    <th>采购时间</th>
+                  </tr>
+                </thead>
+                <tbody id="financePurchaseTableBody"></tbody>
+              </table>
+            </div>
+            <div class="online-pagination finance-profit-pagination">
+              <button id="financePurchasePrevPageBtn" type="button" class="secondary-btn">‹</button>
+              <span id="financePurchasePaginationInfo">1 / 1</span>
+              <button id="financePurchaseNextPageBtn" type="button" class="secondary-btn">›</button>
+              <span>前往</span>
+              <input id="financePurchaseGotoPage" name="financePurchaseGotoPage" type="number" min="1" step="1" aria-label="跳转到页码" />
+              <span>页</span>
+              <select id="financePurchasePageSize" name="financePurchasePageSize" aria-label="每页显示条数">
+                <option value="20" selected>20条/页</option>
+                <option value="50">50条/页</option>
+                <option value="100">100条/页</option>
+              </select>
+            </div>
+          </section>

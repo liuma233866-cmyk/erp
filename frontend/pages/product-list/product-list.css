@@ -1,0 +1,50 @@
+/* product-list 页面专属样式。 */
+#productListPanel .online-products-table table {
+  min-width: 1080px;
+}
+#productListPanel .catalog-table-shell,
+#productOnlinePanel .catalog-table-shell {
+  overflow: hidden;
+}
+#productListPanel .product-title,
+#productOnlinePanel .product-title {
+  line-height: 1.45;
+}
+#productListPanel .product-sub,
+#productOnlinePanel .product-sub {
+  display: grid;
+  line-height: 1.55;
+  gap: 7px;
+  font-size: 12px;
+}
+#productListPanel .product-sub > div,
+#productOnlinePanel .product-sub > div {
+  line-height: 1.55;
+  word-break: break-word;
+}
+#productListPanel .online-footer-bar,
+#productOnlinePanel .online-footer-bar {
+  position: static;
+}
+#productListPanel .online-products-table th:nth-child(1),
+#productListPanel .online-products-table td:nth-child(1) {
+  min-width: 360px;
+}
+#productListPanel .online-products-table th:nth-child(2),
+#productListPanel .online-products-table td:nth-child(2) {
+  min-width: 180px;
+}
+#productListPanel .online-products-table th:nth-child(3),
+#productListPanel .online-products-table td:nth-child(3),
+#productListPanel .online-products-table th:nth-child(4),
+#productListPanel .online-products-table td:nth-child(4),
+#productListPanel .online-products-table th:nth-child(5),
+#productListPanel .online-products-table td:nth-child(5),
+#productListPanel .online-products-table th:nth-child(6),
+#productListPanel .online-products-table td:nth-child(6) {
+  min-width: 110px;
+}
+#productListPanel .online-products-table th:nth-child(7),
+#productListPanel .online-products-table td:nth-child(7) {
+  min-width: 116px;
+}

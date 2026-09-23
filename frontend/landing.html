@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>爆单兽ERP - 跨境团队采集上架与订单协同解决方案</title>
+  <meta
+    name="description"
+    content="爆单兽ERP：面向跨境团队的采集上架与订单协同解决方案，覆盖 Ozon/Yandex 采集导入、Yandex 发布、订单同步、面单、采购、权限与日志审计。"
+  />
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="stylesheet" href="landing.css" />
+  <style>
+    /* 添加新的现代化样式 */
+    :root {
+      --primary-gradient-start: #14b8a6;
+      --primary-gradient-end: #3b82f6;
+      --secondary-bg: #f8fafc;
+      --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --hover-transform: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      overflow-x: hidden;
+    }
+    
+    .nav {
+      padding: 1rem 0;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .hero {
+      padding: 5rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(20, 184, 166, 0.05) 0%, transparent 70%);
+      z-index: -1;
+      animation: rotate 20s linear infinite;
+    }
+    
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: center;
+    }
+    
+    .hero-card h1 {
+      font-size: 2.5rem;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .hero-sub {
+      font-size: 1.1rem;
+      color: #64748b;
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+    }
+    
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      transition: var(--hover-transform);
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--card-shadow);
+    }
+    
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+      color: white;
+      border: none;
+    }
+    
+    .btn.secondary {
+      background: white;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    
+    .tag {
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(59, 130, 246, 0.1));
+      color: #0f766e;
+      border: 1px solid rgba(20, 184, 166, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .stat {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: var(--card-shadow);
+      transition: var(--hover-transform);
+    }
+    
+    .stat:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .stat strong {
+      font-size: 1.5rem;
+      color: var(--primary-gradient-start);
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    
+    .section {
+      padding: 5rem 0;
+      background: var(--secondary-bg);
+    }
+    
+    .section:nth-child(even) {
+      background: white;
+    }
+    
+    .section-header {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto 3rem;
+    }
+    
+    .section-header h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: #1e293b;
+    }
+    
+    .section-header p {
+      color: #64748b;
+      font-size: 1.1rem;
+    }
+    
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: var(--card-shadow);
+      transition: var(--hover-transform);
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: #1e293b;
+    }
+    
+    .card p {
+      color: #64748b;
+      margin-bottom: 0;
+    }
+    
+    .list li {
+      margin-bottom: 0.75rem;
+    }
+    
+    .list li:last-child {
+      margin-bottom: 0;
+    }
+    
+    .feature-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(59, 130, 246, 0.1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      color: var(--primary-gradient-start);
+      font-weight: bold;
+      font-size: 1.5rem;
+    }
+    
+    .cta {
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.05), rgba(59, 130, 246, 0.05));
+      border-radius: 12px;
+      padding: 2rem;
+    }
+    
+    .footer {
+      background: #0f172a;
+      color: #cbd5e1;
+      padding: 4rem 0 2rem;
+    }
+    
+    .footer a {
+      color: #e2e8f0;
+    }
+    
+    .social-links {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .social-link {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--hover-transform);
+    }
+    
+    .social-link:hover {
+      background: var(--primary-gradient-start);
+      transform: translateY(-3px);
+    }
+    
+    @media (max-width: 992px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .hero {
+        padding: 3rem 0;
+      }
+      
+      .hero-actions {
+        flex-direction: column;
+      }
+      
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      
+      .section {
+        padding: 3rem 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <span class="brand-badge">爆</span>
+        <span>爆单兽ERP</span>
+      </div>
+      <nav class="nav-links" aria-label="导航">
+        <a href="#features">功能</a>
+        <a href="#workflow">流程</a>
+        <a href="#security">安全</a>
+        <a href="#faq">FAQ</a>
+        <a class="btn primary" href="/erp" data-erp-link>立即进入系统</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-card">
+          <h1 class="hero-title">爆单兽ERP，用一套系统接住采集、上架、订单、采购和多人协作</h1>
+          <p class="hero-sub">
+            面向跨境运营团队打造的执行型 ERP。把 Ozon/Yandex 商品采集、Yandex 上架发布、订单同步、面单处理、
+            采购录入、店铺权限和日志审计放进同一条业务链，让团队从“各自处理”变成“统一执行”。
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="/erp" data-erp-link>立即进入系统</a>
+            <a class="btn secondary" href="#features">查看核心能力</a>
+            <a class="btn secondary" href="#workflow">看业务流程</a>
+          </div>
+          <div class="hero-tags" aria-label="标签">
+            <span class="tag">Ozon/Yandex采集</span>
+            <span class="tag">Yandex上架发布</span>
+            <span class="tag">订单同步面单</span>
+            <span class="tag">采购信息沉淀</span>
+            <span class="tag">多店铺权限</span>
+            <span class="tag">日志审计</span>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="stat">
+            <strong>减少重复录入</strong>
+            <span>采集的数据直接进入 ERP，不用再在表格、后台、聊天记录之间来回搬运。</span>
+          </div>
+          <div class="stat">
+            <strong>减少漏单漏信息</strong>
+            <span>订单、面单、采购链接、采购单号、运单号和金额统一留档，交接不再靠口头说明。</span>
+          </div>
+          <div class="stat">
+            <strong>多人协作更省心</strong>
+            <span>谁导入、谁改价、谁发布、谁同步过，都能查到，团队越大越需要这层秩序。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>四大能力模块，覆盖跨境团队的关键动作</h2>
+          <p class="lead">不是零散工具拼接，而是围绕商品、发布、订单、采购四个高频场景做成完整流程。</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <div class="feature-icon">🔍</div>
+            <h3>商品采集与导入</h3>
+            <p>支持 Ozon / Yandex 商品采集，标题、描述、图片、属性、变体直接进入 ERP 草稿库，减少手工搬运和重复录入。</p>
+          </article>
+          <article class="card">
+            <div class="feature-icon">🧠</div>
+            <h3>发布校验与类目匹配</h3>
+            <p>围绕类目、价格、重量、尺寸、图片、采购链接等关键信息进行校验，把问题尽量拦在真正上架之前。</p>
+          </article>
+          <article class="card">
+            <div class="feature-icon">📦</div>
+            <h3>Yandex统一发布</h3>
+            <p>商品进入 ERP 后统一发到 Yandex，支持按店铺执行、查看失败原因、重复修正后重试，让发布动作更标准。</p>
+          </article>
+        </div>
+
+        <div style="height: 2rem"></div>
+        <div class="grid-3">
+          <article class="card">
+            <div class="feature-icon">🔄</div>
+            <h3>多 SKU 与变体处理</h3>
+            <p>支持变体级图片、售价、划线价、尺寸、重量、库存维护，适合多规格铺货和批量编辑场景。</p>
+          </article>
+          <article class="card">
+            <div class="feature-icon">📋</div>
+            <h3>订单、面单、采购协同</h3>
+            <p>订单同步后可继续接面单打印、采购平台、采购链接、采购单号、运单号和采购金额，做到全链路留痕。</p>
+          </article>
+          <article class="card">
+            <div class="feature-icon">🔒</div>
+            <h3>权限、日志与自建部署</h3>
+            <p>支持多店铺权限划分、日志审计和自建部署，适合运营、客服、采购、发货多角色协作，数据也更可控。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>爆单兽ERP多场景解决方案</h2>
+          <p class="lead">按真实业务拆成可落地的模块，不只是“能做”，而是适合直接拿来给团队执行。</p>
+        </div>
+        <div class="grid-2">
+          <article class="card">
+            <h3>采集导入解决方案</h3>
+            <ul class="list">
+              <li><span class="dot"></span><span>适合采集搬运、选品录入、多店铺铺货团队。</span></li>
+              <li><span class="dot"></span><span>采集结果直接进 ERP，减少从插件到表格再到后台的多次中转。</span></li>
+              <li><span class="dot"></span><span>商品、图片、属性、变体统一沉淀，方便后续继续编辑和发布。</span></li>
+              <li><span class="dot"></span><span>更适合已经有固定采集动作、想把流程收口的团队。</span></li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>上架发布解决方案</h3>
+            <ul class="list">
+              <li><span class="dot"></span><span>适合重视类目、参数、图片、重量和价格准确性的运营团队。</span></li>
+              <li><span class="dot"></span><span>发布前先校验，再统一发到 Yandex，减少随手发布带来的返工。</span></li>
+              <li><span class="dot"></span><span>失败项可回看、可修正、可重试，方便建立稳定的上架节奏。</span></li>
+              <li><span class="dot"></span><span>流程越固定，越适合多人同时操作。</span></li>
+            </ul>
+          </article>
+        </div>
+
+        <div style="height: 2rem"></div>
+        <div class="grid-2">
+          <article class="card">
+            <h3>订单协同解决方案</h3>
+            <ul class="list">
+              <li><span class="dot"></span><span>适合订单量已经起来、需要同步和跟踪处理状态的团队。</span></li>
+              <li><span class="dot"></span><span>按店铺和时间区间统一同步订单，不再散落在多个后台里。</span></li>
+              <li><span class="dot"></span><span>同步面单、批量打印面单，让发货动作和订单状态能对上。</span></li>
+              <li><span class="dot"></span><span>更适合老板看进度、运营看执行、客服看异常。</span></li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>采购与团队管理解决方案</h3>
+            <ul class="list">
+              <li><span class="dot"></span><span>适合采购、发货、运营多人交接频繁的团队。</span></li>
+              <li><span class="dot"></span><span>采购平台、采购链接、采购单号、金额、运单号统一录入，信息不再散落。</span></li>
+              <li><span class="dot"></span><span>权限、日志、店铺范围一起管，分工更清楚，责任也更清楚。</span></li>
+              <li><span class="dot"></span><span>团队越大，这种可追踪、可交接的体系越值钱。</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="security" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>适合哪些团队开始上系统</h2>
+          <p class="lead">当业务开始进入“多人协作、多店铺、多商品、多订单”阶段，系统的价值就会比单点提速更明显。</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>采集搬运型团队</h3>
+            <p>每天需要大量采集商品、整理信息、补类目、补参数的团队，更适合先把采集到上架的链路跑顺。</p>
+          </article>
+          <article class="card">
+            <h3>多店铺运营团队</h3>
+            <p>店铺一多，谁负责哪个店铺、哪个商品由谁处理、谁可以看什么数据，都需要一套权限和执行框架。</p>
+          </article>
+          <article class="card">
+            <h3>订单采购协同团队</h3>
+            <p>当订单、面单、采购、运单需要多人衔接时，统一留痕和统一视图能明显降低交接成本。</p>
+          </article>
+        </div>
+        <div style="height: 2rem"></div>
+        <div class="cta">
+          <div>
+            <strong>准备开始用一套系统把流程收口？</strong>
+            <span>如果你已经在做跨境铺货，并且团队开始出现协作混乱、返工增多、订单和采购衔接不顺的问题，爆单兽ERP就是用来解决这些问题的。</span>
+          </div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <a class="btn primary" href="/erp" data-erp-link>立即进入系统</a>
+            <a class="btn secondary" href="#faq">查看更多说明</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>常见问题</h2>
+          <p class="lead">把你最关心的上线、权限和插件接入问题提前说明白。</p>
+        </div>
+        <div class="grid-2">
+          <article class="card">
+            <h3>可以先把数据库和 ERP 放一起吗？</h3>
+            <p>可以用于起步省钱，但建议至少做好备份与端口防护；业务稳定后升级到腾讯云 CDB 托管更省心。</p>
+          </article>
+          <article class="card">
+            <h3>这套 ERP 和通用 ERP 有什么不同？</h3>
+            <p>它不追求大而全，而是更像一套跨境团队的执行系统，重点把采集、上架、订单、面单、采购、店铺协同做顺。</p>
+          </article>
+          <article class="card">
+            <h3>适合什么团队？</h3>
+            <p>适合已经在做 Ozon/Yandex 相关业务，开始进入多人协作阶段，想把运营、客服、采购、发货动作收口到同一套系统的团队。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <div class="brand" style="opacity:0.95">
+          <span class="brand-badge" style="width:30px;height:30px;border-radius:10px;">爆</span>
+          <span>爆单兽ERP</span>
+        </div>
+        <div style="margin-top:1rem;">
+          面向跨境团队的轻量化协同工具：采集、上架、订单流转与采购信息统一管理。
+        </div>
+        <div class="social-links">
+          <a href="#" class="social-link" aria-label="微信">
+            <span>微</span>
+          </a>
+          <a href="#" class="social-link" aria-label="QQ">
+            <span>Q</span>
+          </a>
+          <a href="#" class="social-link" aria-label="钉钉">
+            <span>钉</span>
+          </a>
+        </div>
+      </div>
+      <div>
+        <div><span class="kbd">baodanshou.cn</span></div>
+        <div style="margin-top:1rem;" class="note">
+          建议：宣传页使用主域名；ERP 系统使用子域名 <span class="kbd">erp.baodanshou.cn</span>。
+        </div>
+        <div style="margin-top:1rem;" class="note">
+          &copy; <span id="year"></span> 爆单兽ERP. All rights reserved.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const resolveErpHref = () => {
+        const { protocol, hostname, port } = window.location;
+        if (!hostname) return "/erp";
+        if (hostname === "127.0.0.1" || hostname === "localhost") {
+          if (port === "3000") return "/erp";
+          return `${protocol}//${hostname}:3000/erp`;
+        }
+        if (hostname === "baodanshou.cn") {
+          return `${protocol}//erp.baodanshou.cn`;
+        }
+        return "/erp";
+      };
+
+      const erpHref = resolveErpHref();
+      document.querySelectorAll("[data-erp-link]").forEach((link) => {
+        link.setAttribute("href", erpHref);
+      });
+
+      const yearEl = document.getElementById("year");
+      if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+    })();
+  </script>
+</body>
+</html>

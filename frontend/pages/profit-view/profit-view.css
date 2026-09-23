@@ -1,0 +1,58 @@
+/* profit-view 页面专属样式。 */
+.profit-estimate-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #f0cf91;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+.profit-estimate-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.profit-estimate-head div {
+  display: grid;
+  gap: 2px;
+}
+.profit-estimate-head strong {
+  color: #603b0d;
+  font-size: 14px;
+}
+.profit-estimate-head span,
+.profit-estimate-note {
+  color: #82653d;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.profit-estimate-head .profit-estimate-total {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  white-space: nowrap;
+}
+.profit-estimate-total b {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #ffe9ba;
+  color: #8b5100;
+  font-size: 11px;
+}
+.profit-estimate-total span {
+  color: #a65a00;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.profit-estimate-note {
+  margin: 0;
+}
+.profit-estimate-grid {
+  border-color: #efdcb7;
+}

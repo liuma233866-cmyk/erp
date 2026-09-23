@@ -1,0 +1,83 @@
+          <section id="multiPlatformPublishPanel" class="panel hidden publish-panel catalog-workspace publish-workspace">
+            <div class="panel-head publish-panel-head catalog-panel-head">
+              <div class="catalog-head-copy">
+                <span class="catalog-head-eyebrow">刊登工作区</span>
+                <h3 id="publishWorkspaceTitle">发布中心</h3>
+                <p id="publishWorkspaceDescription" class="catalog-head-subtle">展示全部产品，统一整理首图、SKU、价格、尺寸、重量、描述、采集时间、店铺名称与采购链接。</p>
+              </div>
+              <div class="head-actions publish-head-actions">
+                <button id="publishSettingsBtn" class="icon-btn" type="button" aria-label="产品上架设置" title="产品上架设置">⚙</button>
+                <select id="publishShopSelect">
+                  <option value="">发布店铺(按店铺名称)</option>
+                </select>
+                <button id="publishRefreshBtn" class="secondary-btn" type="button">刷新</button>
+                <button id="publishImportBtn" class="secondary-btn" type="button">导入产品</button>
+                <button id="publishAddEmptyBtn" class="secondary-btn" type="button">新增空白</button>
+                <button id="publishBulkStockBtn" class="secondary-btn" type="button">批量设置库存</button>
+                <button id="publishDeleteBtn" class="secondary-btn" type="button">删除选中</button>
+                <button id="publishToYandexBtn" class="secondary-btn" type="button">发布到Yandex</button>
+              </div>
+            </div>
+            <div id="publishWorkspaceTabs" class="publish-workspace-tabs">
+              <button type="button" class="active" data-publish-tab="center">发布中心</button>
+              <button type="button" data-publish-tab="ozon">Ozon 刊登</button>
+              <button type="button" data-publish-tab="yandex">Yandex 刊登</button>
+            </div>
+            <div id="yandexPublishStatusFilters" class="yandex-publish-status-filters hidden" aria-label="Yandex 刊登状态筛选">
+              <button type="button" class="active" data-yandex-publish-status="unpublished">未发布 <span data-status-count="unpublished">0</span></button>
+              <button type="button" data-yandex-publish-status="error">错误 <span data-status-count="error">0</span></button>
+              <button type="button" data-yandex-publish-status="published">已发布 <span data-status-count="published">0</span></button>
+            </div>
+            <p id="publishMessage" class="message small"></p>
+            <div id="publishTableWrap" class="table-wrap online-products-table publish-table-wrap publish-scrollbar-x catalog-table-shell">
+              <table class="publish-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <input id="publishSelectAll" type="checkbox" aria-label="全选当前页" />
+                    </th>
+                    <th>首图 / 系统SKU / 平台SKU / 标题</th>
+                    <th>售价</th>
+                    <th>划线价格</th>
+                    <th>采购价格(RMB)</th>
+                    <th>采购价格(卢布)</th>
+                    <th>包装尺寸(长宽高cm)</th>
+                    <th>重量(kg)</th>
+                    <th>库存</th>
+                    <th>描述</th>
+                    <th>采集时间</th>
+                    <th>店铺名称</th>
+                    <th>发布情况</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="publishTableBody"></tbody>
+              </table>
+            </div>
+            <div class="publish-footer-island">
+              <div id="publishIslandScrollbar" class="publish-island-scrollbar" aria-label="产品上架横向滚动条">
+                <div id="publishIslandScrollbarInner" class="publish-island-scrollbar-inner"></div>
+              </div>
+              <div class="online-footer-bar catalog-footer-bar">
+                <div class="online-select-actions">
+                  <button id="publishSelectAllBtn" type="button" class="secondary-btn">全选</button>
+                  <button id="publishInvertSelectBtn" type="button" class="secondary-btn">反选</button>
+                  <span id="publishSelectedCount" class="small-text">已选 0 / 0 条</span>
+                  <button id="publishFooterDeleteBtn" type="button" class="secondary-btn">删除</button>
+                </div>
+                <div class="online-pagination">
+                  <button id="publishPrevPageBtn" type="button" class="secondary-btn">‹</button>
+                  <span id="publishPaginationInfo">1 / 1</span>
+                  <button id="publishNextPageBtn" type="button" class="secondary-btn">›</button>
+                  <span>前往</span>
+                  <input id="publishGotoPage" name="publishGotoPage" type="number" min="1" step="1" aria-label="跳转到页码" />
+                  <span>页</span>
+                  <select id="publishPageSize" name="publishPageSize" aria-label="每页显示条数">
+                    <option value="20" selected>20条/页</option>
+                    <option value="50">50条/页</option>
+                    <option value="100">100条/页</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>

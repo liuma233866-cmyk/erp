@@ -1,0 +1,61 @@
+          <section id="usersPanel" class="panel hidden">
+            <div class="panel-head">
+              <div>
+                <h3>用户与公司户管理</h3>
+              </div>
+              <div class="head-actions">
+                <button id="openCreateCompanyModalBtn" type="button">创建公司户</button>
+                <button id="refreshUsersBtn" class="secondary-btn" type="button">刷新用户</button>
+                <button id="openAddUserModalBtn" type="button">添加用户</button>
+              </div>
+            </div>
+            <p id="usersMessage" class="message small"></p>
+            <div id="addUserModalMask" class="modal-mask hidden">
+              <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="addUserModalTitle">
+                <div class="modal-head">
+                  <div class="modal-title">
+                    <h3 id="addUserModalTitle">添加用户</h3>
+                    <p class="message small">新用户将绑定到指定公司户。</p>
+                  </div>
+                  <button id="closeAddUserModalBtn" type="button" class="secondary-btn">取消</button>
+                </div>
+                <form id="addUserForm" class="modal-form">
+                  <label for="addUserCompanyName">公司户名称</label>
+                  <input id="addUserCompanyName" name="companyName" type="text" placeholder="公司户名称" required />
+                  <label for="addUserUsername">用户账号</label>
+                  <input id="addUserUsername" name="username" type="text" placeholder="新用户账号" required />
+                  <label for="addUserPassword">初始密码</label>
+                  <div class="password-field">
+                    <input id="addUserPassword" name="password" type="password" placeholder="10-64位，含大小写/数字/符号" autocomplete="new-password" required />
+                    <button id="toggleAddUserPasswordBtn" class="password-toggle" type="button" aria-label="显示密码" aria-pressed="false">👁</button>
+                  </div>
+                  <div class="password-actions">
+                    <button id="generateAddUserPasswordBtn" class="secondary-btn" type="button">自动生成密码</button>
+                  </div>
+                  <label for="addUserRole">角色</label>
+                  <select id="addUserRole" name="role"></select>
+                  <p id="addUserModalMessage" class="message small"></p>
+                  <div class="modal-actions">
+                    <button type="button" class="secondary-btn" id="cancelAddUserBtn">取消</button>
+                    <button type="submit">创建用户</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>公司户</th>
+                    <th>账号</th>
+                    <th>角色</th>
+                    <th>店铺权限</th>
+                    <th>关联店铺</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody"></tbody>
+              </table>
+            </div>
+          </section>

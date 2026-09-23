@@ -1,0 +1,94 @@
+/* logs 页面专属样式。 */
+.log-checker-summary {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.log-checker-empty {
+  border: 1px dashed #d7e2f2;
+  border-radius: 12px;
+  padding: 16px;
+  background: #f8fbff;
+  color: #5f7390;
+}
+.log-checker-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.log-checker-metric {
+  border: 1px solid #d7e2f2;
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px 16px;
+}
+.log-checker-metric span {
+  display: block;
+  font-size: 12px;
+  color: #6d7f98;
+  margin-bottom: 6px;
+}
+.log-checker-metric strong {
+  font-size: 22px;
+  color: #173152;
+}
+.log-checker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.log-checker-card {
+  border: 1px solid #d7e2f2;
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px 16px;
+  box-shadow: 0 8px 20px rgba(20, 38, 66, 0.04);
+}
+.log-checker-card h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #173152;
+}
+.log-checker-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.log-checker-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef4fc;
+  color: #38506d;
+  font-size: 12px;
+}
+.log-checker-badge.severity-high {
+  background: #fff0f0;
+  color: #c02030;
+}
+.log-checker-badge.severity-medium {
+  background: #fff7ea;
+  color: #b56a00;
+}
+.log-checker-badge.severity-low {
+  background: #eef7ee;
+  color: #1d6f3a;
+}
+.log-checker-lines {
+  display: grid;
+  gap: 6px;
+  color: #31455f;
+  font-size: 13px;
+}
+.log-checker-lines code {
+  display: block;
+  background: #f5f8fc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #23405f;
+  word-break: break-word;
+  white-space: pre-wrap;
+}

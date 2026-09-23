@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>爆单兽erp</title>
+    <link rel="stylesheet" href="shared/base.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/users/users.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/orders/orders.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/reports/reports.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/shops/shops.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/ai/ai.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/publish/publish.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/review-rules/review-rules.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/online-products/online-products.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/profit-detail/profit-detail.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/profit-view/profit-view.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/category-mapping/category-mapping.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/logs/logs.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/yandex-rates/yandex-rates.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/finance/finance.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/product-list/product-list.css?v=20260920-css-safe" />
+  </head>
+  <body class="app-booting">
+    <div id="authView" class="login-view">
+      <div class="login-topbar">
+        <a class="login-brand" href="/">
+          <span class="login-brand-badge">O</span>
+          <span>爆单兽erp</span>
+        </a>
+        <a class="login-home-link" href="/">首页</a>
+      </div>
+      <div class="login-shell">
+        <form id="loginForm" class="login-card">
+          <h1>管理员登录</h1>
+          <label for="loginUsername">用户名</label>
+          <input id="loginUsername" name="username" type="text" placeholder="admin" autocomplete="username" required />
+          <label for="loginPassword">密码</label>
+          <input id="loginPassword" name="password" type="password" placeholder="输入密码" autocomplete="current-password" required />
+          <button type="submit">登录</button>
+          <p id="loginMessage" class="message"></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="adminView" class="admin-view hidden">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-logo" aria-hidden="true">O</span>
+          <strong>爆单兽erp</strong>
+        </div>
+        <nav class="top-nav">
+          <button class="nav-link active" data-view="reportsPanel">首页</button>
+          <button class="nav-link" data-view="productListPanel">产品列表</button>
+          <button class="nav-link" data-view="multiPlatformPublishPanel">多平台刊登</button>
+          <button class="nav-link" data-view="ordersPanel">订单管理</button>
+          <button class="nav-link" data-view="ordersV2Panel">订单管理 V2</button>
+          <button class="nav-link" data-view="aiPanel">AI</button>
+          <button class="nav-link" data-view="usersPanel">用户管理</button>
+          <button class="nav-link" data-view="apiPanel">店铺管理</button>
+          <button class="nav-link" data-view="messagesPanel">消息管理</button>
+          <button class="nav-link" data-view="warehousePanel">仓库管理</button>
+          <button class="nav-link" data-view="systemPanel">系统管理</button>
+          <button class="nav-link" data-view="logsPanel">日志管理</button>
+        </nav>
+        <div class="user-block">
+          <span class="user-avatar" aria-hidden="true">👤</span>
+          <span id="currentUser" class="current-user-name"></span>
+          <button id="logoutBtn" class="logout-btn">退出登录</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside class="sidebar">
+          <ul>
+            <li><button class="side-link active" data-view="reportsPanel"><span class="side-icon">📊</span><span class="side-text">首页</span></button></li>
+            <li class="side-group">
+              <button class="side-link side-group-toggle" data-submenu="productSubmenu">
+                <span class="side-icon">🛒</span><span class="side-text">产品管理</span>
+              </button>
+              <ul class="side-submenu hidden" id="productSubmenu">
+                <li><button class="side-link sub" data-view="productListPanel">产品列表</button></li>
+                <li><button class="side-link sub" data-view="productOnlinePanel">Yandex产品库</button></li>
+                <li><button class="side-link sub" data-view="ozonProductPanel">Ozon产品库</button></li>
+              </ul>
+            </li>
+            <li><button class="side-link" data-view="multiPlatformPublishPanel"><span class="side-icon">🚀</span><span class="side-text">多平台刊登</span></button></li>
+            <li><button class="side-link" data-view="ordersPanel"><span class="side-icon">📦</span><span class="side-text">订单管理</span></button></li>
+            <li><button class="side-link" data-view="ordersV2Panel"><span class="side-icon">🧾</span><span class="side-text">订单管理 V2</span></button></li>
+            <li><button class="side-link" data-view="aiPanel"><span class="side-icon">🤖</span><span class="side-text">AI</span></button></li>
+            <li><button class="side-link" data-view="usersPanel"><span class="side-icon">👤</span><span class="side-text">用户管理</span></button></li>
+            <li><button class="side-link" data-view="apiPanel"><span class="side-icon">🔄</span><span class="side-text">店铺管理</span></button></li>
+            <li><button class="side-link" data-view="messagesPanel"><span class="side-icon">💬</span><span class="side-text">消息管理</span></button></li>
+            <li><button class="side-link" data-view="warehousePanel"><span class="side-icon">🏬</span><span class="side-text">仓库管理</span></button></li>
+            <li class="side-group">
+              <button class="side-link side-group-toggle" data-submenu="systemSubmenu">
+                <span class="side-icon">⚙️</span><span class="side-text">系统管理</span>
+              </button>
+              <ul class="side-submenu hidden" id="systemSubmenu">
+                <li><button class="side-link sub" data-view="aiConfigPanel">AI配置</button></li>
+                <li><button class="side-link sub" data-view="aiImageTaskPanel">AI图任务</button></li>
+                <li><button class="side-link sub" data-view="reviewRulesPanel">审核规则</button></li>
+                <li><button class="side-link sub" data-view="categoryMappingPanel">类目映射</button></li>
+                <li><button class="side-link sub" data-view="yandexCommissionPanel">平台类目</button></li>
+                <li><button class="side-link sub" data-view="logisticsFeePanel">物流费用</button></li>
+              </ul>
+            </li>
+            <li class="side-group">
+              <button class="side-link side-group-toggle" data-submenu="financeSubmenu">
+                <span class="side-icon">💹</span><span class="side-text">财务</span>
+              </button>
+              <ul class="side-submenu hidden" id="financeSubmenu">
+                <li><button class="side-link sub" data-view="financePurchasePanel">采购</button></li>
+                <li><button class="side-link sub" data-view="financeProfitPanel">订单利润</button></li>
+                <li><button class="side-link sub" data-view="financeBillPanel">平台账单</button></li>
+              </ul>
+            </li>
+            <li><button class="side-link" data-view="logsPanel"><span class="side-icon">🧾</span><span class="side-text">日志</span></button></li>
+          </ul>
+          <div class="sidebar-footer">
+            <button id="sidebarToggle" class="sidebar-toggle sidebar-toggle-bottom" type="button" aria-label="切换侧边栏">
+              <span class="side-icon" aria-hidden="true">☰</span>
+            </button>
+          </div>
+        </aside>
+
+        <main class="content">
+<!--#include file="pages/reports/reports.html" -->
+
+<!--#include file="pages/publish/publish.html" -->
+
+<!--#include file="pages/product-list/product-list.html" -->
+
+<!--#include file="pages/online-products/online-products.html" -->
+
+<!--#include file="pages/ozon-products/ozon-products.html" -->
+
+<!--#include file="pages/orders/orders.html" -->
+
+<!--#include file="pages/orders/orders-v2.html" -->
+
+<!--#include file="pages/ai/ai.html" -->
+
+<!--#include file="pages/users/users.html" -->
+
+          <div id="createCompanyModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="createCompanyModalTitle">
+              <div class="modal-head">
+                <h3 id="createCompanyModalTitle">创建公司户</h3>
+                <button id="closeCreateCompanyModalBtn" type="button" class="secondary-btn">取消</button>
+              </div>
+              <form id="createCompanyForm" class="modal-form">
+                <label for="createCompanyName">公司名</label>
+                <input id="createCompanyName" name="companyName" type="text" placeholder="例如：XX跨境有限公司" required />
+                <label for="createCompanyAdminUsername">管理员账号</label>
+                <input id="createCompanyAdminUsername" name="username" type="text" placeholder="例如：admin_xx" required />
+                <label for="createCompanyPassword">密码</label>
+                <input id="createCompanyPassword" name="password" type="password" placeholder="初始密码(10-64位，含大小写/数字/符号)" required />
+                <div class="modal-actions">
+                  <button type="button" class="secondary-btn" id="cancelCreateCompanyBtn">取消</button>
+                  <button type="submit">创建</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+<!--#include file="pages/shops/shops.html" -->
+
+<!--#include file="pages/messages/messages.html" -->
+
+<!--#include file="pages/finance/finance-purchase.html" -->
+
+<!--#include file="pages/finance/finance-profit.html" -->
+
+<!--#include file="pages/finance/finance-bill.html" -->
+
+<!--#include file="pages/warehouse/warehouse.html" -->
+
+<!--#include file="pages/review-rules/review-rules.html" -->
+
+          <div id="reviewRuleModalMask" class="modal-mask review-rule-drawer-mask hidden">
+            <div class="modal-card review-rule-modal" role="dialog" aria-modal="true" aria-labelledby="reviewRuleModalTitle">
+              <div class="modal-head">
+                <h3 id="reviewRuleModalTitle">添加审单规则</h3>
+                <button id="closeReviewRuleModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="reviewRuleForm" class="modal-form review-rule-form">
+                <div class="review-rule-field">
+                  <label for="reviewRuleName">规则名称</label>
+                  <input id="reviewRuleName" name="name" type="text" placeholder="例如：默认Yandex利润规则" required />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRulePriority">优先级</label>
+                  <input id="reviewRulePriority" name="priority" type="number" min="1" step="1" value="100" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleShopId">适用店铺</label>
+                  <select id="reviewRuleShopId" name="shopId">
+                    <option value="">全部店铺</option>
+                  </select>
+                  <small class="subtle">留空表示此规则用于当前账号可见的全部店铺；选择店铺后，此规则只用于该店铺。</small>
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRulePlatform">平台</label>
+                  <select id="reviewRulePlatform" name="platform">
+                    <option value="yandex_market">Yandex</option>
+                  </select>
+                </div>
+                <div class="review-rule-field review-rule-field-full">
+                  <label>用于哪些数据</label>
+                  <div class="review-rule-targets">
+                    <label class="review-rule-target-option">
+                      <input id="reviewRuleApplyToOrders" name="applyToOrders" type="checkbox" checked />
+                      <span>订单</span>
+                    </label>
+                    <label class="review-rule-target-option">
+                      <input id="reviewRuleApplyToOnlineProducts" name="applyToOnlineProducts" type="checkbox" checked />
+                      <span>在线产品</span>
+                    </label>
+                  </div>
+                  <small class="subtle">可以只给订单使用、只给在线产品使用，或者两边同时使用。</small>
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleLogisticsPerKgRub">每公斤运费 RUB</label>
+                  <input id="reviewRuleLogisticsPerKgRub" name="logisticsPerKgRub" type="number" step="0.01" min="0" placeholder="例如 95" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleLogisticsPerKgRmb">自动换算 RMB</label>
+                  <input id="reviewRuleLogisticsPerKgRmb" name="logisticsPerKgRmb" type="number" step="0.01" min="0" placeholder="自动换算" readonly />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleRegistrationFeeRub">挂号费 RUB</label>
+                  <input id="reviewRuleRegistrationFeeRub" name="registrationFeeRub" type="number" step="0.01" min="0" placeholder="例如 10" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleRegistrationFeeRmb">自动换算 RMB</label>
+                  <input id="reviewRuleRegistrationFeeRmb" name="registrationFeeRmb" type="number" step="0.01" min="0" placeholder="自动换算" readonly />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleOtherFeeRub">其他成本 RUB</label>
+                  <input id="reviewRuleOtherFeeRub" name="otherFeeRub" type="number" step="0.01" min="0" placeholder="例如 10" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleOtherFeeRmb">自动换算 RMB</label>
+                  <input id="reviewRuleOtherFeeRmb" name="otherFeeRmb" type="number" step="0.01" min="0" placeholder="自动换算" readonly />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleWithdrawPercent">提现 (%)</label>
+                  <input id="reviewRuleWithdrawPercent" name="withdrawPercent" type="number" step="0.01" min="0" placeholder="例如 1.5" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRuleTransferPercent">转账 (%)</label>
+                  <input id="reviewRuleTransferPercent" name="transferPercent" type="number" step="0.01" min="0" placeholder="例如 0.8" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRulePackingFeeRub">贴单+包装费 RUB</label>
+                  <input id="reviewRulePackingFeeRub" name="packingFeeRub" type="number" step="0.01" min="0" placeholder="例如 16" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="reviewRulePackingFeeRmb">自动换算 RMB</label>
+                  <input id="reviewRulePackingFeeRmb" name="packingFeeRmb" type="number" step="0.01" min="0" placeholder="自动换算" readonly />
+                </div>
+                <div class="review-rule-field review-rule-field-full">
+                  <label for="reviewRuleNotes">备注</label>
+                  <input id="reviewRuleNotes" name="notes" type="text" placeholder="规则说明（可选）" />
+                </div>
+                <button id="reviewRuleSubmitBtn" type="submit">确认添加</button>
+              </form>
+            </div>
+          </div>
+
+<!--#include file="pages/category-mapping/category-mapping.html" -->
+
+          <div id="categoryMappingRuleModalMask" class="modal-mask hidden">
+            <div class="modal-card category-mapping-modal" role="dialog" aria-modal="true" aria-labelledby="categoryMappingRuleModalTitle">
+              <div class="modal-head">
+                <h3 id="categoryMappingRuleModalTitle">添加类目映射规则</h3>
+                <button id="closeCategoryMappingRuleModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="categoryMappingRuleForm" class="modal-form category-mapping-rule-form">
+                <div class="review-rule-field">
+                  <label for="categoryMappingRuleName">规则名称</label>
+                  <input id="categoryMappingRuleName" name="name" type="text" placeholder="例如：Ozon太阳能灯默认映射" required />
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingRulePriority">优先级</label>
+                  <input id="categoryMappingRulePriority" name="priority" type="number" min="1" step="1" value="50" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingRulePlatform">来源平台</label>
+                  <select id="categoryMappingRulePlatform" name="platform">
+                    <option value="ozon">Ozon</option>
+                  </select>
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingRuleShopId">店铺</label>
+                  <select id="categoryMappingRuleShopId" name="shopId">
+                    <option value="">全部店铺</option>
+                  </select>
+                </div>
+                <div class="review-rule-field review-rule-field-full">
+                  <label for="categoryMappingSourceCategoryPath">来源类目路径</label>
+                  <input id="categoryMappingSourceCategoryPath" name="sourceCategoryPath" type="text" placeholder="例如：Дом и сад > Освещение > Уличные светильники" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingKeywords">命中关键词</label>
+                  <textarea id="categoryMappingKeywords" name="keywords" rows="4" placeholder="多个关键词可换行、逗号或竖线分隔"></textarea>
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingExcludedKeywords">排除关键词</label>
+                  <textarea id="categoryMappingExcludedKeywords" name="excludedKeywords" rows="4" placeholder="命中这些词时跳过该规则"></textarea>
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingTargetCategoryId">目标类目 ID</label>
+                  <input id="categoryMappingTargetCategoryId" name="categoryId" type="number" min="0" step="1" placeholder="例如 12345678" />
+                </div>
+                <div class="review-rule-field">
+                  <label for="categoryMappingTargetCategoryName">目标类目名称</label>
+                  <input id="categoryMappingTargetCategoryName" name="categoryName" type="text" placeholder="例如：Уличные светильники" />
+                </div>
+                <div class="review-rule-field review-rule-field-full">
+                  <label for="categoryMappingTargetCategoryPath">目标类目路径</label>
+                  <input id="categoryMappingTargetCategoryPath" name="categoryPath" type="text" placeholder="例如：Товары для дома > Освещение > Уличные светильники" />
+                </div>
+                <div class="review-rule-field review-rule-field-full">
+                  <label for="categoryMappingRuleNotes">备注</label>
+                  <input id="categoryMappingRuleNotes" name="notes" type="text" placeholder="规则说明、适用型号或补充条件（可选）" />
+                </div>
+                <button id="categoryMappingRuleSubmitBtn" type="submit">确认添加</button>
+              </form>
+            </div>
+          </div>
+
+<!--#include file="pages/commissions/yandex-commission.html" -->
+
+<!--#include file="pages/commissions/ozon-commission.html" -->
+
+<!--#include file="pages/yandex-rates/yandex-rates.html" -->
+
+<!--#include file="pages/system/system.html" -->
+
+<!--#include file="pages/ai/ai-config.html" -->
+
+<!--#include file="pages/ai/ai-image-tasks.html" -->
+
+          <div id="aiImagePromptSettingsModalMask" class="modal-mask hidden">
+            <div class="modal-card ai-image-task-modal" role="dialog" aria-modal="true" aria-labelledby="aiImagePromptSettingsTitle">
+              <div class="modal-head">
+                <div class="modal-title"><h3 id="aiImagePromptSettingsTitle">AI 图提示词设置</h3></div>
+                <button id="closeAiImagePromptSettingsBtn" class="secondary-btn" type="button">关闭</button>
+              </div>
+              <form id="aiImagePromptForm" class="ai-config-form">
+                <label for="aiImagePromptName">提示词名称</label>
+                <input id="aiImagePromptName" name="name" type="text" maxlength="128" placeholder="例如：白底商品图" required />
+                <label for="aiImagePromptModelId">适用模型</label>
+                <select id="aiImagePromptModelId" name="modelId">
+                  <option value="">全部模型（通用）</option>
+                </select>
+                <label for="aiImagePromptValue">提示词</label>
+                <textarea id="aiImagePromptValue" name="prompt" rows="5" placeholder="输入换背景提示词" required></textarea>
+                <label class="checkbox-row"><input id="aiImagePromptDefault" name="isDefault" type="checkbox" /> 设为默认提示词</label>
+                <div class="ai-config-form-actions"><button type="submit">添加提示词</button></div>
+              </form>
+              <div id="aiImagePromptList" class="ai-prompt-settings-list"></div>
+            </div>
+          </div>
+
+          <div id="aiModelModalMask" class="modal-mask hidden">
+            <div class="modal-card ai-model-modal" role="dialog" aria-modal="true" aria-labelledby="aiModelFormTitle">
+              <div class="modal-head">
+                <h3 id="aiModelFormTitle">添加 AI 模型</h3>
+                <button id="closeAiModelModalBtn" class="secondary-btn" type="button">取消</button>
+              </div>
+              <form id="aiModelForm" class="ai-config-form">
+                <input id="aiModelId" name="id" type="hidden" />
+                <label for="aiModelName">配置名称</label>
+                <input id="aiModelName" name="name" type="text" maxlength="128" placeholder="例如：通义千问主模型" required />
+                <label for="aiModelProvider">服务商</label>
+                <select id="aiModelProvider" name="provider">
+                  <option value="qwen">通义千问</option>
+                  <option value="openai">OpenAI 兼容接口</option>
+                  <option value="custom">自定义</option>
+                </select>
+                <label for="aiModelCode">模型标识</label>
+                <input id="aiModelCode" name="model" type="text" maxlength="120" placeholder="例如：qwen3.7-plus" required />
+                <small class="field-help">只能填写字母、数字、点、冒号、下划线或短横线。</small>
+                <label for="aiModelBaseUrl">API 地址</label>
+                <input id="aiModelBaseUrl" name="baseUrl" type="url" maxlength="512" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" required />
+                <label for="aiModelApiKey">API Key</label>
+                <input id="aiModelApiKey" name="apiKey" type="password" autocomplete="new-password" placeholder="新建时填写；编辑时留空保持原 Key" />
+                <div class="ai-config-checks">
+                  <label class="checkbox-row"><input id="aiModelEnabled" name="enabled" type="checkbox" checked /> 启用</label>
+                  <label class="checkbox-row"><input id="aiModelDefault" name="isDefault" type="checkbox" /> 设为默认模型</label>
+                </div>
+                <div class="ai-config-form-actions">
+                  <button id="saveAiModelBtn" type="submit">保存模型</button>
+                  <button id="testAiModelFormBtn" class="secondary-btn" type="button">测试当前配置</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="aiImageTaskModalMask" class="modal-mask hidden">
+            <div class="modal-card ai-image-task-modal" role="dialog" aria-modal="true" aria-labelledby="aiImageTaskFormTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="aiImageTaskFormTitle">新建 AI 图任务</h3>
+                  <p class="small">先填源图，再选模型；保存后可以直接排队。</p>
+                </div>
+                <button id="closeAiImageTaskModalBtn" class="secondary-btn" type="button">取消</button>
+              </div>
+              <form id="aiImageTaskForm" class="ai-config-form">
+                <input id="aiImageTaskId" name="id" type="hidden" />
+                <label for="aiImageTaskSourceType">来源类型</label>
+                <select id="aiImageTaskSourceType" name="sourceType">
+                  <option value="product">产品</option>
+                  <option value="collector">采集插件</option>
+                  <option value="manual">手动</option>
+                </select>
+                <label for="aiImageTaskSourceId">来源ID</label>
+                <input id="aiImageTaskSourceId" name="sourceId" type="text" maxlength="128" placeholder="产品ID / 任务来源ID" />
+                <label for="aiImageTaskProductId">产品ID</label>
+                <input id="aiImageTaskProductId" name="productId" type="text" maxlength="128" placeholder="ERP 产品ID（可选）" />
+                <label for="aiImageTaskSourceImageUrl">源图片地址</label>
+                <input id="aiImageTaskSourceImageUrl" name="sourceImageUrl" type="url" maxlength="2000" placeholder="https://..." required />
+                <label for="aiImageTaskModelId">目标模型</label>
+                <select id="aiImageTaskModelId" name="modelId">
+                  <option value="">自动选择默认模型</option>
+                </select>
+                <label for="aiImageTaskStatus">任务状态</label>
+                <select id="aiImageTaskStatus" name="status">
+                  <option value="draft">草稿</option>
+                  <option value="queued">排队中</option>
+                  <option value="processing">处理中</option>
+                  <option value="succeeded">成功</option>
+                  <option value="failed">失败</option>
+                  <option value="blocked">阻断</option>
+                  <option value="canceled">已取消</option>
+                </select>
+                <label for="aiImageTaskResultImageUrl">结果图片地址</label>
+                <input id="aiImageTaskResultImageUrl" name="resultImageUrl" type="url" maxlength="2000" placeholder="成功后回传的图片地址" />
+                <label for="aiImageTaskErrorMessage">错误信息</label>
+                <textarea id="aiImageTaskErrorMessage" name="errorMessage" rows="3" placeholder="失败原因会写在这里"></textarea>
+                <label for="aiImageTaskNotes">备注</label>
+                <textarea id="aiImageTaskNotes" name="notes" rows="3" placeholder="记录来源、回传说明或人工处理备注"></textarea>
+                <div class="ai-config-checks">
+                  <label class="checkbox-row"><input id="aiImageTaskResetProgress" name="resetProgress" type="checkbox" checked /> 保存时重置进度</label>
+                </div>
+                <div class="ai-config-form-actions">
+                  <button id="saveAiImageTaskBtn" type="submit">保存任务</button>
+                  <button id="queueAiImageTaskBtn" class="secondary-btn" type="button">保存并排队</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="aiImageTaskLogModalMask" class="modal-mask hidden">
+            <div class="modal-card ai-image-task-modal" role="dialog" aria-modal="true" aria-labelledby="aiImageTaskLogTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="aiImageTaskLogTitle">AI 图任务日志</h3>
+                  <p id="aiImageTaskLogCode" class="small"></p>
+                </div>
+                <button id="closeAiImageTaskLogModalBtn" class="secondary-btn" type="button">关闭</button>
+              </div>
+              <div id="aiImageTaskLogContent" class="ai-task-log-list"></div>
+            </div>
+          </div>
+
+          <div id="aiImageTaskResultModalMask" class="modal-mask hidden">
+            <div class="modal-card ai-image-result-modal" role="dialog" aria-modal="true" aria-labelledby="aiImageTaskResultTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="aiImageTaskResultTitle">图片处理结果</h3>
+                  <p id="aiImageTaskResultCode" class="small"></p>
+                </div>
+                <button id="closeAiImageTaskResultModalBtn" class="secondary-btn" type="button">关闭</button>
+              </div>
+              <div class="ai-image-result-compare">
+                <figure>
+                  <figcaption>源图</figcaption>
+                  <img id="aiImageTaskResultSourceImage" alt="任务源图" />
+                  <p id="aiImageTaskResultSourceEmpty" class="small-text hidden">未提供源图</p>
+                </figure>
+                <figure>
+                  <figcaption>处理结果</figcaption>
+                  <img id="aiImageTaskResultImage" alt="AI 处理结果" />
+                  <p id="aiImageTaskResultEmpty" class="small-text hidden">暂未返回结果图片</p>
+                </figure>
+              </div>
+              <p id="aiImageTaskResultError" class="ai-image-result-error hidden"></p>
+            </div>
+          </div>
+
+<!--#include file="pages/logs/logs.html" -->
+
+          <div id="shopModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="shopModalTitle">
+              <div class="modal-head">
+                <h3 id="shopModalTitle">添加店铺</h3>
+                <button id="closeShopModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="addShopForm" class="modal-form">
+                <label for="shopProvider">店铺平台</label>
+                <select id="shopProvider" name="provider">
+                  <option value="yandex_market">Yandex Market</option>
+                  <option value="ozon">Ozon</option>
+                  <option value="local">本地店铺</option>
+                </select>
+                <label for="shopCurrency">店铺币种</label>
+                <select id="shopCurrency" name="shopCurrency">
+                  <option value="RUR">RUR（卢布）</option>
+                  <option value="CNY">CNY（人民币）</option>
+                </select>
+                <label for="shopCompanyName">公司户名称</label>
+                <input id="shopCompanyName" name="companyName" type="text" placeholder="默认跟随当前公司户" />
+                <label id="shopCampaignIdLabel" for="shopCampaignId">活动ID</label>
+                <input id="shopCampaignId" name="campaignId" type="text" placeholder="例如 12345678" />
+                <label id="shopApiKeyLabel" for="shopApiKey">Yandex API Key</label>
+                <input id="shopApiKey" name="apiKey" type="password" placeholder="可粘贴 Api-Key/OAuth/Bearer" />
+                <label for="shopOrderWorkspace">订单进入</label>
+                <select id="shopOrderWorkspace" name="orderWorkspace">
+                  <option value="v1">订单管理第一版</option>
+                  <option value="v2">订单管理 V2</option>
+                </select>
+                <label for="shopName">店铺名称(可选)</label>
+                <input id="shopName" name="name" type="text" placeholder="自定义店铺名称" />
+                <label for="shopCode">店铺编码(可选)</label>
+                <input id="shopCode" name="code" type="text" placeholder="例如 MYSHOP-001" />
+                <button id="submitShopBtn" type="submit">确认添加</button>
+              </form>
+            </div>
+          </div>
+
+          <div id="purchaseModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="purchaseModalTitle">
+              <div class="modal-head">
+                <h3 id="purchaseModalTitle">采购信息</h3>
+                <button id="closePurchaseModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <div id="purchaseInfoPreview" class="purchase-preview"></div>
+              <form id="purchaseForm" class="purchase-form">
+                <div class="purchase-field">
+                  <label for="purchasePlatform">采购平台</label>
+                  <input id="purchasePlatform" type="text" placeholder="例如 1688/淘宝/拼多多" />
+                </div>
+                <div class="purchase-field">
+                  <label for="purchaseLink">采购链接</label>
+                  <input id="purchaseLink" type="text" placeholder="https://..." />
+                </div>
+                <div class="purchase-field">
+                  <label for="purchaseOrderNo">采购单号</label>
+                  <input id="purchaseOrderNo" type="text" placeholder="采购单号" />
+                </div>
+                <div class="purchase-field">
+                  <label for="purchaseIntlNo">采购运单号</label>
+                  <input id="purchaseIntlNo" type="text" placeholder="运单号" />
+                </div>
+                <div class="purchase-field">
+                  <label for="purchasePriceRmb">采购价格人民币</label>
+                  <input id="purchasePriceRmb" type="number" step="0.01" min="0" placeholder="人民币" />
+                </div>
+                <div class="purchase-field">
+                  <label for="purchasePriceRub">采购价格卢布</label>
+                  <input id="purchasePriceRub" type="number" step="0.01" min="0" placeholder="卢布" />
+                </div>
+                <input id="purchaseExpressNo" type="hidden" />
+                <button type="submit">保存采购信息</button>
+              </form>
+              <p id="purchaseMessage" class="message small"></p>
+            </div>
+          </div>
+
+          <div id="orderSyncModalMask" class="modal-mask hidden">
+            <div class="modal-card order-sync-modal" role="dialog" aria-modal="true" aria-labelledby="orderSyncModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="orderSyncModalTitle">订单同步设置</h3>
+                  <p class="subtle">可按时间区间、店铺或指定订单号精确同步。</p>
+                </div>
+                <button id="closeOrderSyncModalBtn" class="icon-btn" type="button" aria-label="关闭">×</button>
+              </div>
+              <form id="orderSyncForm" class="modal-form">
+                <div class="order-sync-grid">
+                  <label>
+                    <span>开始日期</span>
+                    <input id="orderSyncFromDate" name="fromDate" type="date" />
+                  </label>
+                  <label>
+                    <span>结束日期</span>
+                    <input id="orderSyncToDate" name="toDate" type="date" />
+                  </label>
+                  <label class="order-sync-span-2">
+                    <span>同步店铺</span>
+                    <select id="orderSyncShopSelect" name="shopId">
+                      <option value="">全部已启用店铺</option>
+                    </select>
+                  </label>
+                  <label class="order-sync-span-2">
+                    <span>指定订单号</span>
+                    <textarea id="orderSyncOrderNos" name="orderNos" rows="5" placeholder="支持多个订单号，逗号、空格、换行都可以。留空则按时间区间同步。"></textarea>
+                  </label>
+                </div>
+                <p id="orderSyncModalMessage" class="message small"></p>
+                <div class="modal-actions">
+                  <button id="cancelOrderSyncBtn" type="button" class="secondary-btn">取消</button>
+                  <button id="submitOrderSyncBtn" type="submit">开始同步</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="orderRemarkModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="orderRemarkModalTitle">
+              <div class="modal-head">
+                <h3 id="orderRemarkModalTitle">订单备注</h3>
+                <button id="closeOrderRemarkBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="orderRemarkForm" class="modal-form">
+                <label for="orderRemarkText">备注内容</label>
+                <textarea id="orderRemarkText" rows="6" placeholder="记录订单处理说明、售后沟通或特殊情况"></textarea>
+                <p id="orderRemarkMessage" class="message small"></p>
+                <div class="modal-actions">
+                  <button type="submit">保存备注</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="trackingModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="trackingModalTitle">
+              <div class="modal-head">
+                <h3 id="trackingModalTitle">订单跟踪信息</h3>
+                <button id="closeTrackingModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <div class="tracking-info">
+                <div class="tracking-meta">
+                  <div>运单条码: <span id="trackingCode" class="value"></span></div>
+                  <div>物流服务: <span id="trackingService" class="value"></span></div>
+                </div>
+                <div id="trackingTimeline" class="tracking-timeline"></div>
+                <p id="trackingMessage" class="message small"></p>
+              </div>
+            </div>
+          </div>
+
+          <div id="orderMatchModalMask" class="modal-mask hidden">
+            <div class="modal-card order-match-modal" role="dialog" aria-modal="true" aria-labelledby="orderMatchModalTitle">
+              <div class="modal-head">
+                <h3 id="orderMatchModalTitle">匹配在线产品</h3>
+                <button id="closeOrderMatchModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <div id="orderMatchPreview" class="purchase-preview"></div>
+              <form id="orderMatchForm" class="modal-form">
+                <label for="orderMatchSearch">搜索在线产品</label>
+                <input id="orderMatchSearch" type="text" placeholder="支持标题、SKU、商家编码搜索" />
+                <label for="orderMatchProductSelect">选择在线产品</label>
+                <select id="orderMatchProductSelect" class="order-match-select" size="10"></select>
+                <div class="modal-actions">
+                  <button id="clearOrderMatchBtn" type="button" class="secondary-btn">清空匹配</button>
+                  <button type="submit">保存匹配</button>
+                </div>
+              </form>
+              <p id="orderMatchMessage" class="message small"></p>
+            </div>
+          </div>
+
+          <div id="publishGalleryModalMask" class="modal-mask hidden">
+            <div class="publish-gallery-modal" role="dialog" aria-modal="true" aria-labelledby="publishGalleryTitle">
+              <button id="closePublishGalleryBtn" type="button" class="publish-gallery-close" aria-label="关闭">×</button>
+              <button id="publishGalleryPrevBtn" type="button" class="publish-gallery-nav prev" aria-label="上一张">‹</button>
+              <div class="publish-gallery-stage">
+                <div class="publish-gallery-head">
+                  <h3 id="publishGalleryTitle">产品图片预览</h3>
+                  <span id="publishGalleryCounter">1 / 1</span>
+                </div>
+                <div class="publish-gallery-image-wrap">
+                  <img id="publishGalleryImage" src="" alt="产品大图预览" />
+                </div>
+                <div id="publishGalleryThumbs" class="publish-gallery-thumbs"></div>
+              </div>
+              <button id="publishGalleryNextBtn" type="button" class="publish-gallery-nav next" aria-label="下一张">›</button>
+            </div>
+          </div>
+
+          <div id="publishRecordModalMask" class="modal-mask hidden">
+            <div class="modal-card publish-record-modal" role="dialog" aria-modal="true" aria-labelledby="publishRecordModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="publishRecordModalTitle">刊登产品详情</h3>
+                  <p id="publishRecordModalSubtitle" class="small"></p>
+                </div>
+                <button id="closePublishRecordModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <div id="publishRecordModalContent" class="publish-record-content"></div>
+              <p id="publishRecordModalMessage" class="message small"></p>
+            </div>
+          </div>
+
+          <div id="publishSettingsModalMask" class="modal-mask hidden">
+            <div class="modal-card publish-settings-modal" role="dialog" aria-modal="true" aria-labelledby="publishSettingsModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="publishSettingsModalTitle">产品上架设置</h3>
+                  <p class="small">控制 ERP 自动发布和模拟后台上架规则。</p>
+                </div>
+                <button id="closePublishSettingsModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="publishSettingsForm" class="modal-form">
+                <div class="publish-settings-layout">
+                  <section class="publish-settings-section publish-automation-settings">
+                    <div class="publish-settings-section-head">
+                      <span class="publish-settings-section-icon">↗</span>
+                      <div><h4>自动发布</h4><small>配置各平台的自动刊登方式</small></div>
+                    </div>
+                <label class="pill-setting-row" for="publishAutoToYandexToggle">
+                  <span class="pill-setting-copy">
+                    <strong>ERP自动发布到Yandex Market</strong>
+                    <small>开启后，导入 ERP 的商品会继续自动执行发布。</small>
+                  </span>
+                  <span class="pill-switch">
+                    <input id="publishAutoToYandexToggle" name="erpAutoPublishToYandex" type="checkbox" />
+                    <span class="pill-slider"></span>
+                  </span>
+                </label>
+                <label class="pill-setting-row" for="publishAutoToOzonToggle">
+                  <span class="pill-setting-copy">
+                    <strong>ERP自动发布到 Ozon</strong>
+                    <small>开启后，采集到 ERP 且已绑定 Ozon 店铺的商品会自动提交刊登。</small>
+                  </span>
+                  <span class="pill-switch">
+                    <input id="publishAutoToOzonToggle" name="erpAutoPublishToOzon" type="checkbox" />
+                    <span class="pill-slider"></span>
+                  </span>
+                </label>
+                <label class="pill-setting-row" for="publishSimulateToggle">
+                  <span class="pill-setting-copy">
+                    <strong>模拟后台上架到Yandex Market</strong>
+                    <small>开启后，仍然真实调用 Yandex API，但会按人工手动上架风格逐条顺序发布。</small>
+                  </span>
+                  <span class="pill-switch">
+                    <input id="publishSimulateToggle" name="simulateBackendPublishToYandex" type="checkbox" />
+                    <span class="pill-slider"></span>
+                  </span>
+                </label>
+                  </section>
+                  <section class="publish-settings-section publish-settings-fields">
+                    <div class="publish-settings-section-head">
+                      <span class="publish-settings-section-icon">#</span>
+                      <div><h4>SKU 与刊登频率</h4><small>仅影响以后复制和发布的产品</small></div>
+                    </div>
+                  <div class="publish-setting-input-grid">
+                    <label><span>默认 SKU 前缀</span><input id="publishSkuPrefix" type="text" maxlength="16" placeholder="PUB" /></label>
+                    <label><span>连接符</span><select id="publishSkuSeparator"><option value="-">短横线 -</option><option value="_">下划线 _</option><option value=".">点号 .</option></select></label>
+                  </div>
+                  <div class="publish-shop-prefix-block">
+                    <div class="publish-shop-prefix-title"><strong>各店铺 SKU 前缀</strong><small>留空时使用默认前缀</small></div>
+                    <div id="publishShopPrefixList" class="publish-shop-prefix-list"></div>
+                  </div>
+                  <label class="pill-setting-row" for="publishSkuIncludeSourceToggle">
+                    <span class="pill-setting-copy"><strong>SKU 包含来源 SKU</strong><small>关闭后使用“前缀 + 唯一码”。</small></span>
+                    <span class="pill-switch"><input id="publishSkuIncludeSourceToggle" type="checkbox" /><span class="pill-slider"></span></span>
+                  </label>
+                  <div class="publish-setting-input-grid frequency-grid">
+                    <label><span>刊登间隔</span><div class="publish-number-field"><input id="publishIntervalSeconds" type="number" min="0" max="3600" step="1" placeholder="0" /><em>秒</em></div><small>0 表示不等待</small></label>
+                    <label><span>每日刊登上限</span><div class="publish-number-field"><input id="dailyPublishLimit" type="number" min="0" max="100000" step="1" placeholder="0" /><em>件</em></div><small>0 表示不限制</small></label>
+                  </div>
+                  </section>
+                  <section class="publish-settings-section publish-settings-fields">
+                    <div class="publish-settings-section-head">
+                      <span class="publish-settings-section-icon">#</span>
+                      <div><h4>卡片质量门槛</h4><small>只拦截新刊登（含产品库复制）；已成功刊登的老产品不受影响</small></div>
+                    </div>
+                    <label class="pill-setting-row" for="publishQualityGateToggle">
+                      <span class="pill-setting-copy">
+                        <strong>刊登前检查卡片质量分</strong>
+                        <small>分数低于下限时自动拦截并报错，不会真正发布到 Yandex。</small>
+                      </span>
+                      <span class="pill-switch">
+                        <input id="publishQualityGateToggle" type="checkbox" />
+                        <span class="pill-slider"></span>
+                      </span>
+                    </label>
+                    <div class="publish-setting-input-grid frequency-grid">
+                      <label><span>最低卡片质量分</span><div class="publish-number-field"><input id="publishQualityMinScore" type="number" min="0" max="100" step="1" placeholder="80" /><em>分</em></div><small>Yandex 官方建议 80 分以上</small></label>
+                    </div>
+                  </section>
+                </div>
+                <p id="publishSettingsModalMessage" class="message small"></p>
+                <div class="modal-actions">
+                  <button id="cancelPublishSettingsBtn" type="button" class="secondary-btn">取消</button>
+                  <button id="savePublishSettingsBtn" type="submit">保存</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="publishImportModalMask" class="modal-mask hidden">
+            <div class="modal-card publish-import-modal" role="dialog" aria-modal="true" aria-labelledby="publishImportModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="publishImportModalTitle">导入产品</h3>
+                  <p class="small">先下载模板填写，再上传导入文件。</p>
+                </div>
+                <button id="closePublishImportModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="publishImportForm" class="modal-form publish-import-form">
+                <label for="publishImportShopSelect">
+                  <span>导入到店铺</span>
+                  <select id="publishImportShopSelect" name="shopId">
+                    <option value="">优先使用文件内店铺ID</option>
+                  </select>
+                </label>
+                <div class="publish-import-actions">
+                  <button id="downloadPublishImportTemplateBtn" type="button" class="secondary-btn">导入产品模板</button>
+                </div>
+                <label class="ai-upload publish-import-upload">
+                  <input id="publishImportFileInput" type="file" accept=".xlsx,.xls,.csv" />
+                  上传导入文件
+                </label>
+                <p id="publishImportFileName" class="small-text">未选择文件</p>
+                <p id="publishImportMessage" class="message small"></p>
+                <div class="modal-actions">
+                  <button id="cancelPublishImportBtn" type="button" class="secondary-btn">取消</button>
+                  <button id="submitPublishImportBtn" type="submit">开始导入</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="onlineInventoryModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="onlineInventoryModalTitle">
+              <div class="modal-head">
+                <h3 id="onlineInventoryModalTitle">批量添加库存</h3>
+                <button id="closeOnlineInventoryModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="onlineInventoryForm" class="modal-form">
+                <label for="onlineInventoryDelta">添加库存数量</label>
+                <input id="onlineInventoryDelta" name="delta" type="number" step="1" min="0" placeholder="输入要增加的数量" />
+                <button type="submit">确认添加</button>
+              </form>
+              <p id="onlineInventoryMessage" class="message small"></p>
+            </div>
+          </div>
+
+          <div id="onlineCopyPublishModalMask" class="modal-mask hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="onlineCopyPublishModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="onlineCopyPublishModalTitle">复制在线产品到刊登</h3>
+                  <p id="onlineCopyPublishSelectionInfo" class="small">已选择 0 条在线产品</p>
+                </div>
+                <button id="closeOnlineCopyPublishModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="onlineCopyPublishForm" class="modal-form">
+                <label for="onlineCopyPublishPlatform">
+                  <span>目标平台</span>
+                  <select id="onlineCopyPublishPlatform" name="platform" required>
+                    <option value="yandex">Yandex</option>
+                    <option value="ozon">Ozon</option>
+                  </select>
+                </label>
+                <label for="onlineCopyPublishShop">
+                  <span>目标店铺</span>
+                  <select id="onlineCopyPublishShop" name="shopId" required>
+                    <option value="">请选择店铺</option>
+                  </select>
+                </label>
+                <label for="onlineCopyPublishPriceStrategy">
+                  <span>价格策略</span>
+                  <select id="onlineCopyPublishPriceStrategy" name="priceStrategy">
+                    <option value="convert">按目标店铺币种换算</option>
+                    <option value="keep">沿用源价格（需人工复核）</option>
+                  </select>
+                </label>
+                <label for="onlineCopyPublishAiMode">
+                  <span>AI 图片任务</span>
+                  <select id="onlineCopyPublishAiMode" name="aiMode">
+                    <option value="all">全部变体</option>
+                    <option value="main">仅主图</option>
+                    <option value="none">跳过 AI</option>
+                  </select>
+                </label>
+                <label class="checkbox-label" for="onlineCopyPublishOverwrite">
+                  <input id="onlineCopyPublishOverwrite" type="checkbox" checked />
+                  <span>覆盖已有标题和描述</span>
+                </label>
+                <label class="checkbox-label" for="onlineCopyPublishDryRun">
+                  <input id="onlineCopyPublishDryRun" type="checkbox" />
+                  <span>先预览，不写入</span>
+                </label>
+                <p id="onlineCopyPublishMessage" class="message small">只复制为刊登草稿，不会立即发布到平台。</p>
+                <div id="onlineCopyPublishPreview" class="message small hidden"></div>
+                <div class="modal-actions">
+                  <button id="cancelOnlineCopyPublishBtn" type="button" class="secondary-btn">取消</button>
+                  <button type="submit">确认复制</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="onlineSourceModalMask" class="modal-mask hidden">
+            <div class="modal-card online-source-modal" role="dialog" aria-modal="true" aria-labelledby="onlineSourceModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="onlineSourceModalTitle">修改在线产品</h3>
+                </div>
+                <button id="closeOnlineSourceModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="onlineSourceForm" class="modal-form online-source-form">
+                <section class="online-source-section online-source-section-full">
+                  <div class="online-source-section-head">
+                    <strong>货源信息</strong>
+                  </div>
+                  <div class="online-source-grid">
+                    <label class="online-source-field" for="onlineSourceType">
+                      <span>货源类型</span>
+                      <input id="onlineSourceType" name="sourceType" type="text" placeholder="例如：非ERP采集" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourceNote">
+                      <span>备注</span>
+                      <input id="onlineSourceNote" name="sourceNote" type="text" placeholder="记录供应商信息，便于采购" />
+                    </label>
+                    <label class="online-source-field online-source-field-full" for="onlineSourceLink">
+                      <span>货源链接</span>
+                      <input id="onlineSourceLink" name="purchaseUrl" type="url" placeholder="https://..." />
+                    </label>
+                    <label class="online-source-field online-source-field-full" for="onlineSourceLink2">
+                      <span>货源链接2（可选）</span>
+                      <input id="onlineSourceLink2" name="purchaseUrl2" type="url" placeholder="https://..." />
+                    </label>
+                  </div>
+                </section>
+
+                <section class="online-source-section">
+                  <div class="online-source-section-head">
+                    <strong>价格与库存</strong>
+                  </div>
+                  <div class="online-source-grid">
+                    <label class="online-source-field" for="onlineSourcePurchasePriceRmb">
+                      <span>采购价（人民币）</span>
+                      <input id="onlineSourcePurchasePriceRmb" name="purchasePriceRmb" type="number" step="0.01" min="0" placeholder="例如 25.80" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourcePurchasePriceRub">
+                      <span>采购价（卢布）</span>
+                      <input id="onlineSourcePurchasePriceRub" name="purchasePriceRub" type="number" step="0.01" min="0" placeholder="例如 320.00" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourceSalePrice">
+                      <span>售价（卢布）</span>
+                      <input id="onlineSourceSalePrice" name="salePrice" type="number" step="0.01" min="0" placeholder="例如 499.00" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourceOriginalPrice">
+                      <span>划线价（卢布）</span>
+                      <input id="onlineSourceOriginalPrice" name="originalPrice" type="number" step="0.01" min="0" placeholder="例如 699.00" />
+                    </label>
+                    <label class="online-source-field online-source-field-full" for="onlineSourceStockCount">
+                      <span>库存</span>
+                      <input id="onlineSourceStockCount" name="stockCount" type="number" step="1" min="0" placeholder="例如 20" />
+                    </label>
+                  </div>
+                </section>
+
+                <section class="online-source-section">
+                  <div class="online-source-section-head">
+                    <strong>包装参数</strong>
+                  </div>
+                  <div class="online-source-grid">
+                    <label class="online-source-field" for="onlineSourcePackageLengthCm">
+                      <span>长(cm)</span>
+                      <input id="onlineSourcePackageLengthCm" name="packageLengthCm" type="number" step="0.01" min="0" placeholder="例如 30" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourcePackageWidthCm">
+                      <span>宽(cm)</span>
+                      <input id="onlineSourcePackageWidthCm" name="packageWidthCm" type="number" step="0.01" min="0" placeholder="例如 20" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourcePackageHeightCm">
+                      <span>高(cm)</span>
+                      <input id="onlineSourcePackageHeightCm" name="packageHeightCm" type="number" step="0.01" min="0" placeholder="例如 10" />
+                    </label>
+                    <label class="online-source-field" for="onlineSourceWeightKg">
+                      <span>重量(kg)</span>
+                      <input id="onlineSourceWeightKg" name="weightKg" type="number" step="0.001" min="0" placeholder="例如 0.35" />
+                    </label>
+                  </div>
+                </section>
+                <div class="modal-actions">
+                  <button id="cancelOnlineSourceBtn" type="button" class="secondary-btn">取消</button>
+                  <button type="submit">确定</button>
+                </div>
+              </form>
+              <p id="onlineSourceMessage" class="message small"></p>
+            </div>
+          </div>
+
+          <div id="onlineCommissionModalMask" class="modal-mask hidden">
+            <div class="modal-card online-commission-modal" role="dialog" aria-modal="true" aria-labelledby="onlineCommissionModalTitle">
+              <div class="modal-head">
+                <h3 id="onlineCommissionModalTitle">未匹配佣金商品清单</h3>
+                <button id="closeOnlineCommissionModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>店铺</th>
+                      <th>SKU</th>
+                      <th>商品名称</th>
+                      <th>类目</th>
+                      <th>原因</th>
+                    </tr>
+                  </thead>
+                  <tbody id="onlineCommissionTableBody"></tbody>
+                </table>
+              </div>
+              <p id="onlineCommissionMessage" class="message small"></p>
+            </div>
+          </div>
+
+          <div id="onlineExportModalMask" class="modal-mask hidden">
+            <div class="modal-card online-export-modal" role="dialog" aria-modal="true" aria-labelledby="onlineExportModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="onlineExportModalTitle">在线产品导出</h3>
+                  <span id="onlineExportSummary" class="small-text">当前筛选 0 条产品</span>
+                </div>
+                <button id="closeOnlineExportModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <form id="onlineExportForm" class="modal-form">
+                <div id="onlineExportColumns" class="online-export-columns"></div>
+                <div class="online-export-actions">
+                  <button id="onlineExportSelectAllBtn" type="button" class="secondary-btn">全选列</button>
+                  <button id="onlineExportResetBtn" type="button" class="secondary-btn">恢复默认</button>
+                </div>
+                <p id="onlineExportMessage" class="message small"></p>
+                <div class="modal-actions">
+                  <button id="cancelOnlineExportBtn" type="button" class="secondary-btn">取消</button>
+                  <button id="confirmOnlineExportBtn" type="submit">导出Excel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="profitDetailModalMask" class="modal-mask hidden">
+            <div class="modal-card profit-detail-modal" role="dialog" aria-modal="true" aria-labelledby="profitDetailModalTitle">
+              <div class="modal-head">
+                <div class="modal-title">
+                  <h3 id="profitDetailModalTitle">利润明细</h3>
+                  <span id="profitDetailModalSubtitle"></span>
+                </div>
+                <button id="closeProfitDetailModalBtn" type="button" class="secondary-btn">关闭</button>
+              </div>
+              <div id="profitDetailContent" class="profit-detail-content"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script src="shared/core/state.js"></script>
+    <script src="shared/core/api.js"></script>
+    <script src="shared/core/router.js?v=20260920-router-skeleton"></script>
+    <script src="shared/core/permissions.js?v=20260920-role-visibility"></script>
+    <script src="shared/core/auth.js"></script>
+    <script src="shared/core/ui.js?v=20260920-ui-chart-consts"></script>
+    <script src="shared/core/safe-image-url.js?v=20260816-img-src-allowlist"></script>
+    <script src="shared/core/profit-estimate.js?v=20260810-platform-estimate"></script>
+    <script src="shared/core/currency.js?v=20260920-currency-2"></script>
+    <script src="pages/profit-view/profit-view.js?v=20260920-profit-view"></script>
+    <script src="pages/profit-detail/profit-detail.js?v=20260920-dom-sink"></script>
+    <script src="pages/orders/orders.js?v=20260920-dom-sink"></script>
+    <script src="pages/publish/multi-platform-publish.js?v=20260729a"></script>
+    <script src="pages/logs/logs.js?v=20260920-dom-sink"></script>
+    <script src="pages/messages/messages.js?v=20260920-dom-sink"></script>
+    <script src="pages/users/users.js?v=20260920-dom-sink"></script>
+    <script src="pages/shops/shops.js?v=20260920-dom-sink"></script>
+    <script src="pages/product-list/product-list.js?v=20260920-dom-sink"></script>
+    <script src="pages/reports/reports.js?v=20260920-dom-sink"></script>
+    <script src="pages/finance/finance.js?v=20260920-dom-sink"></script>
+    <script src="pages/commissions/commissions.js?v=20260920-dom-sink"></script>
+    <script src="pages/ai/ai.js?v=20260920-dom-sink"></script>
+    <script src="pages/category-mapping/category-mapping.js?v=20260920-dom-sink"></script>
+    <script src="pages/review-rules/review-rules.js?v=20260920-review-rules"></script>
+    <script src="pages/yandex-rates/yandex-rates.js"></script>
+    <script src="pages/online-products/online-products.js?v=20260920-dom-sink"></script>
+    <script src="pages/publish/publish.js?v=20260920-dom-sink"></script>
+    <script src="app.js?v=20260920-dom-sink"></script>
+  </body>
+</html>

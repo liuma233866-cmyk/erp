@@ -1,0 +1,37 @@
+          <section id="aiConfigPanel" class="panel hidden">
+            <div class="panel-head">
+              <div>
+                <h3>AI配置</h3>
+              </div>
+              <div class="head-actions">
+                <button id="openAddAiModelBtn" type="button">添加模型</button>
+                <button id="refreshAiModelsBtn" type="button">刷新</button>
+              </div>
+            </div>
+            <p id="aiConfigPageMessage" class="message small"></p>
+            <div class="ai-config-layout">
+              <div class="ai-config-list-card">
+                <div class="ai-config-list-head">
+                  <div>
+                    <h4>已配置模型</h4>
+                    <span id="aiModelsCount" class="small-text">0 个模型</span>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>名称 / 模型</th>
+                        <th>服务商</th>
+                        <th>API 地址</th>
+                        <th>Key</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="aiModelsTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>

@@ -1,0 +1,80 @@
+          <section id="productListPanel" class="panel hidden catalog-workspace catalog-list-workspace">
+            <div class="panel-head catalog-panel-head">
+              <div class="catalog-head-copy">
+                <span class="catalog-head-eyebrow">商品目录</span>
+                <h3>产品列表</h3>
+              </div>
+            </div>
+            <div class="online-summary-grid catalog-summary-grid">
+              <article class="online-summary-card">
+                <span>产品总数</span>
+                <strong id="productListCount">0</strong>
+              </article>
+              <article class="online-summary-card">
+                <span>类目数量</span>
+                <strong id="productListCategoryCount">0</strong>
+              </article>
+              <article class="online-summary-card">
+                <span>店铺数量</span>
+                <strong id="productListShopCount">0</strong>
+              </article>
+            </div>
+
+            <form id="productListFilterForm" class="online-advanced-filter catalog-filter-card">
+              <div class="field">
+                <label>店铺</label>
+                <select name="shopId" id="productListShopFilter">
+                  <option value="">店铺(全部)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>产品关键词</label>
+                <input name="keyword" type="text" placeholder="支持标题、SKU、品牌搜索" />
+              </div>
+              <div class="field">
+                <label>产品类目</label>
+                <input name="category" type="text" placeholder="支持类目名称或类目ID" />
+              </div>
+              <div class="field filter-actions">
+                <button type="submit">搜索</button>
+                <button id="productListResetBtn" type="button" class="secondary-btn">重置</button>
+              </div>
+            </form>
+            <p id="productListMessage" class="message small catalog-inline-message"></p>
+
+            <div class="table-wrap online-products-table catalog-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>产品信息</th>
+                    <th>类目路径</th>
+                    <th>售价</th>
+                    <th>库存</th>
+                    <th>店铺</th>
+                    <th>更新时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="productListTableBody"></tbody>
+              </table>
+            </div>
+
+            <div class="online-footer-bar catalog-footer-bar">
+              <div class="online-select-actions">
+                <span id="productListSelectedCount" class="small-text">当前 0 条</span>
+              </div>
+              <div class="online-pagination">
+                <button id="productListPrevPageBtn" type="button" class="secondary-btn">‹</button>
+                <span id="productListPaginationInfo">1 / 1</span>
+                <button id="productListNextPageBtn" type="button" class="secondary-btn">›</button>
+                <span>前往</span>
+                <input id="productListGotoPage" type="number" min="1" step="1" />
+                <span>页</span>
+                <select id="productListPageSize">
+                  <option value="20" selected>20条/页</option>
+                  <option value="50">50条/页</option>
+                  <option value="100">100条/页</option>
+                </select>
+              </div>
+            </div>
+          </section>

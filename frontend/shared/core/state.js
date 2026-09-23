@@ -1,0 +1,135 @@
+const PAGE_SIZE = 50;
+const DEFAULT_ONLINE_PAGE_SIZE = 20;
+const DEFAULT_PUBLISH_PAGE_SIZE = 20;
+const DEFAULT_PRODUCT_LIST_PAGE_SIZE = 20;
+const LOGS_PAGE_SIZE = 50;
+
+const state = {
+  user: null,
+  panelLoaded: {
+    orders: false,
+    ordersV2: false,
+    onlineProducts: false,
+    publishProducts: false,
+    publishSettings: false,
+    users: false,
+    shops: false,
+    messages: false,
+    logs: false,
+    reviewRules: false,
+    categoryMapping: false,
+    aiConfig: false,
+    aiModels: false,
+    aiImageTasks: false
+  },
+  orders: [],
+  financeOrders: [],
+  financeProfitFilters: { orderNo: "", sku: "", receiptCode: "", profitMin: "", profitMax: "" },
+  financePurchasePage: 1,
+  financePurchasePageSize: 20,
+  financePurchaseFilters: { orderNo: "", sku: "", purchasePlatform: "" },
+  dashboardOrders: [],
+  orderWorkspace: "v1",
+  filteredOrders: [],
+  selectedOrderIds: [],
+  // Cross-page selection: id -> order snapshot so selections survive pagination
+  // and batch actions can resolve orders that are not on the current page.
+  selectedOrdersById: new Map(),
+  currentPage: 1,
+  ordersPagination: {
+    page: 1,
+    pageSize: PAGE_SIZE,
+    total: 0,
+    totalPages: 1
+  },
+  onlineProducts: [],
+  onlineCommissionUnmatched: [],
+  onlineFilteredProducts: [],
+  productListFilteredProducts: [],
+  productListCurrentPage: 1,
+  productListPageSize: DEFAULT_PRODUCT_LIST_PAGE_SIZE,
+  onlineCurrentPage: 1,
+  onlinePageSize: DEFAULT_ONLINE_PAGE_SIZE,
+  onlineSelectedIds: [],
+  onlineExportColumns: [],
+  publishProducts: [],
+  publishCurrentPage: 1,
+  publishPageSize: DEFAULT_PUBLISH_PAGE_SIZE,
+  publishSelectedIds: [],
+  publishWorkspaceTab: "center",
+  yandexPublishStatusFilter: "unpublished",
+  publishGalleryImages: [],
+  publishGalleryIndex: 0,
+  publishSettings: {
+    erpAutoPublishToYandex: true,
+    erpAutoPublishToOzon: false,
+    simulateBackendPublishToYandex: false
+  },
+  reviewRules: [],
+  categoryMappingRules: [],
+  categoryMappingSamples: [],
+  categoryMappingPlatform: "ozon",
+  categoryMappingFetchedAt: "",
+  financePurchaseRows: [],
+  financeProfitRows: [],
+  profitIssues: [],
+  profitIssueSummary: {
+    total: 0,
+    byReason: {}
+  },
+  logs: [],
+  logsCurrentPage: 1,
+  shops: [],
+  messages: [],
+  orderSync: {
+    running: false,
+    message: "",
+    updatedAt: ""
+  },
+  aiModels: [],
+  aiImageTasks: [],
+  aiImageTaskSelectedId: "",
+  aiImageTaskCheckedIds: [],
+  aiImageTaskStatusFilter: "all",
+  aiImageTaskKeyword: "",
+  aiImageTaskLoadSequence: 0,
+  filters: {
+    orderId: "",
+    shopName: "",
+    shopSku: "",
+    itemCount: "",
+    shopOrderNo: "",
+    shopStatus: "",
+    trackingNo: "",
+    domesticTrackingNo: "",
+    purchaseOrderNo: "",
+    purchasePlatform: "",
+    purchaseStatus: "",
+    customerReceiptCode: "",
+    sellerOrderDate: "",
+    status: ""
+  },
+  onlineFilters: {
+    shopId: "",
+    title: "",
+    productId: "",
+    shopSku: "",
+    marketSku: "",
+    brand: "",
+    vendorCode: "",
+    categoryId: "",
+    status: "",
+    statusGroup: "all"
+  },
+  productListFilters: {
+    shopId: "",
+    keyword: "",
+    category: ""
+  },
+  yandexCommissionCatalog: null,
+  yandexCommissionPage: 1,
+  yandexCommissionPageSize: 20,
+  yandexCommissionTotal: 0,
+  cnyRateRub: null,
+  rubPurchaseCostRate: null
+};

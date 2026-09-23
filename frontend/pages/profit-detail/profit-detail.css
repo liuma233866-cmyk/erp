@@ -1,0 +1,102 @@
+/* profit-detail 页面专属样式。 */
+.profit-detail-modal {
+  width: min(calc(100vw - 32px), 1180px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+.profit-detail-content {
+  display: grid;
+  min-height: 0;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.profit-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.profit-detail-summary-card {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #d9e4f2;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+.profit-detail-summary-card span {
+  color: #647a99;
+  font-size: 12px;
+}
+.profit-detail-summary-card strong {
+  color: #24364d;
+  font-size: 14px;
+}
+.profit-detail-summary-card b {
+  color: #1c4f9c;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.profit-detail-summary-card.meta-card {
+  background: #f7fafc;
+}
+.profit-detail-summary-card.meta-card b {
+  color: #22603a;
+}
+.profit-detail-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+.profit-detail-columns-single {
+  grid-template-columns: 1fr;
+}
+.profit-detail-grid {
+  display: grid;
+  border: 1px solid #d9e4f2;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.profit-detail-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #fff;
+  border-bottom: 1px solid #e8eef7;
+}
+.profit-detail-row:last-child {
+  border-bottom: none;
+}
+.profit-detail-row span:nth-child(2),
+.profit-detail-row span:nth-child(3) {
+  text-align: right;
+  color: #24415f;
+  font-variant-numeric: tabular-nums;
+}
+.profit-detail-row-head {
+  background: #f4f8ff;
+  font-weight: 700;
+  color: #304763;
+}
+.profit-detail-row-total {
+  background: #eef5ff;
+  font-weight: 700;
+}
+.profit-detail-trigger {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #1c4f9c;
+  font-weight: 700;
+  cursor: pointer;
+}
+.profit-detail-trigger:hover {
+  color: #163c77;
+  text-decoration: underline;
+}

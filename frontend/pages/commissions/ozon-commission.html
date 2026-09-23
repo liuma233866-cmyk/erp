@@ -1,0 +1,25 @@
+          <section id="ozonCommissionPanel" class="panel hidden">
+            <div class="panel-head">
+              <h3>Ozon佣金</h3>
+              <div class="head-actions">
+                <button id="syncOzonCommissionBtn" class="secondary-btn" type="button">同步商品类目佣金</button>
+                <button id="syncOzonFullCategoryBtn" class="secondary-btn" type="button">同步全量 Ozon 类目</button>
+              </div>
+            </div>
+            <div class="logistics-tabs platform-tabs" aria-label="佣金平台切换">
+              <button class="tab" type="button" data-view="yandexCommissionPanel">Yandex佣金</button>
+              <button class="tab active" type="button" data-view="ozonCommissionPanel">Ozon佣金</button>
+            </div>
+            <p id="ozonCommissionMessage" class="message small">可同步店铺商品类目佣金，或同步全量类目；无商品佣金的类目会标记为“待获取”。</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Type ID</th><th>佣金</th><th>同步时间</th></tr></thead>
+                <tbody id="ozonCommissionTableBody"><tr><td colspan="3">加载中...</td></tr></tbody>
+              </table>
+            </div>
+            <div class="table-pager" style="margin-top:10px;display:flex;align-items:center;gap:10px;justify-content:flex-end;">
+              <button id="ozonCommissionPrevBtn" class="secondary-btn">上一页</button>
+              <span id="ozonCommissionPageInfo" class="message small">第 1 / 1 页</span>
+              <button id="ozonCommissionNextBtn" class="secondary-btn">下一页</button>
+            </div>
+          </section>

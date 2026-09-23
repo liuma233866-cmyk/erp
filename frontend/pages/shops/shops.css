@@ -1,0 +1,36 @@
+/* shops 页面专属样式。 */
+.shop-credential-relation strong,
+.shop-credential-relation small {
+  display: block;
+}
+.shop-workspace-label {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.shop-workspace-label.is-v2 {
+  background: #eaf2ff;
+  color: #1d4ed8;
+}
+.shop-credential-relation strong {
+  color: #1d4ed8;
+}
+.shop-credential-relation small {
+  margin-top: 4px;
+  color: #64748b;
+  white-space: nowrap;
+}
+.shop-assign-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  max-width: 360px;
+  max-height: 120px;
+  overflow: auto;
+  padding: 4px 0;
+}

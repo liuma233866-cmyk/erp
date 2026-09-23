@@ -1,0 +1,46 @@
+          <section id="logsPanel" class="panel hidden">
+            <div class="panel-head">
+              <h3>日志管理</h3>
+              <div class="head-actions">
+                <button id="runLogCheckerBtn" class="secondary-btn" type="button">检查错误</button>
+                <button id="refreshLogsBtn" type="button">刷新日志</button>
+              </div>
+            </div>
+            <div id="logCheckerSummary" class="log-checker-summary">
+              <div class="log-checker-empty">点击“检查错误”后显示诊断结果</div>
+            </div>
+            <form id="logsFilterForm" class="filter-form">
+              <input name="username" type="text" placeholder="用户名" aria-label="按用户名筛选" />
+              <input name="actionType" type="text" placeholder="操作类型(如 read/create)" aria-label="按操作类型筛选" />
+              <input name="path" type="text" placeholder="接口路径包含" aria-label="按接口路径筛选" />
+              <input name="statusCode" type="number" min="100" max="599" placeholder="状态码" aria-label="按状态码筛选" />
+              <input name="dateFrom" type="date" aria-label="开始日期" />
+              <input name="dateTo" type="date" aria-label="结束日期" />
+              <button type="submit">筛选</button>
+              <button id="resetLogsFilterBtn" type="button" class="secondary-btn">重置</button>
+            </form>
+            <p id="logsMessage" class="message small"></p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>用户</th>
+                    <th>角色</th>
+                    <th>操作</th>
+                    <th>方法</th>
+                    <th>路径</th>
+                    <th>状态</th>
+                    <th>成功</th>
+                    <th>错误/警告</th>
+                  </tr>
+                </thead>
+                <tbody id="logsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination-row">
+              <button id="prevLogsPageBtn" type="button" class="secondary-btn">上一页</button>
+              <span id="logsPaginationInfo">第 1 页 / 共 1 页</span>
+              <button id="nextLogsPageBtn" type="button" class="secondary-btn">下一页</button>
+            </div>
+          </section>

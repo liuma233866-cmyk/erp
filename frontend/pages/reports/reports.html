@@ -1,0 +1,101 @@
+          <section id="reportsPanel" class="panel">
+            <div class="panel-head"><h3>首页</h3></div>
+            <div class="dashboard-hero">
+              <div class="dashboard-hero-copy">
+                <span class="dashboard-eyebrow">概览</span>
+                <h2>订单、销售与履约一站式工作台</h2>
+                <p>关键指标优先，信息更清晰，复盘更高效。</p>
+                <div class="dashboard-hero-tags" aria-label="关键指标">
+                  <span>订单</span>
+                  <span>产品</span>
+                  <span>履约</span>
+                  <span>利润</span>
+                </div>
+              </div>
+              <div class="dashboard-hero-side">
+                <div class="dashboard-pulse-card">
+                  <span>今日</span>
+                  <strong>运营稳定</strong>
+                  <p>跟踪订单流转、GMV 与发货完成情况。</p>
+                </div>
+              </div>
+            </div>
+            <div class="report-grid">
+              <article class="report-card accent-blue">
+                <div class="report-card-head"><h4>今日订单</h4><span>实时</span></div>
+                <p id="todayOrders">0</p>
+                <small>全部店铺的新增与进行中订单</small>
+              </article>
+              <article class="report-card accent-teal">
+                <div class="report-card-head"><h4>销售总额</h4><span>汇总</span></div>
+                <p id="totalAmount">₽0.00</p>
+                <small>销售表现与收入规模</small>
+              </article>
+              <article class="report-card accent-amber">
+                <div class="report-card-head"><h4>发货率</h4><span>履约</span></div>
+                <p id="shippedRate">0%</p>
+                <small>一眼掌握发货进度</small>
+              </article>
+            </div>
+            <div class="dashboard-card">
+              <div class="dashboard-top">
+                <div class="top10-head">
+                  <h4>销售趋势</h4>
+                  <span class="small-text">按平台和周期查看订单、付款与退款走势</span>
+                </div>
+                <div id="platformTabs" class="dashboard-tabs">
+                  <button class="tab active" type="button" data-platform="all">全部</button>
+                  <button class="tab" type="button" data-platform="yandex">Yandex</button>
+                  <button class="tab" type="button" data-platform="ozon">Ozon</button>
+                  <button class="tab" type="button" data-platform="other">其他</button>
+                </div>
+              </div>
+              <div class="dashboard-body">
+                <div class="chart-area">
+                  <div class="chart-header">
+                    <div id="periodTabs" class="time-tabs">
+                      <button class="tab active" type="button" data-period="day">日</button>
+                      <button class="tab" type="button" data-period="week">周</button>
+                      <button class="tab" type="button" data-period="month">月</button>
+                    </div>
+                  </div>
+                  <div class="chart-legend" aria-label="趋势指标说明">
+                    <span><i class="legend-mark blue"></i>订单总金额</span>
+                    <span><i class="legend-mark green"></i>付款金额</span>
+                    <span><i class="legend-mark orange"></i>退款金额</span>
+                  </div>
+                  <div class="chart-grid">
+                    <div id="chartYAxis" class="y-axis"></div>
+                    <div class="plot">
+                      <svg viewBox="0 0 640 220" preserveAspectRatio="none" aria-label="销售趋势图">
+                        <polyline id="lineOrder" class="line blue" points="0,220 640,220"></polyline>
+                        <polyline id="linePaid" class="line green" points="0,220 640,220"></polyline>
+                        <polyline id="lineRefund" class="line orange" points="0,220 640,220"></polyline>
+                      </svg>
+                      <div id="chartTooltip" class="chart-tooltip hidden"></div>
+                      <div id="chartXAxis" class="x-axis"><span>-</span></div>
+                    </div>
+                  </div>
+                </div>
+                <aside class="top10">
+                  <div class="top10-head">
+                    <h4>店铺销售 Top 10</h4>
+                    <span class="small-text">按卢布销售额排序</span>
+                  </div>
+                  <ol id="top10List" class="top10-list">
+                    <li>暂无数据</li>
+                  </ol>
+                </aside>
+              </div>
+            </div>
+            <div class="home-charts">
+              <div class="chart-card">
+                <div class="chart-title">平台销售额（₽）</div>
+                <div id="barChartPlatform" class="bar-chart"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-title">订单状态分布</div>
+                <div id="barChartStatus" class="bar-chart"></div>
+              </div>
+            </div>
+          </section>

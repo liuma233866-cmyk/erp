@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V2 中央库</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="catalog-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">PRODUCT PUBLISH V2</p>
+        <h1>中央商品库</h1>
+        <p class="subtitle">采集快照、SPU/变体、版本和图片资产统一管理。</p>
+      </div>
+      <button id="refresh-button" class="secondary">刷新</button>
+    </header>
+    <section class="toolbar">
+      <input id="search-input" type="search" placeholder="搜索标题或标准 SKU">
+      <select id="status-select"><option value="">全部状态</option><option value="collected">已采集</option><option value="normalized">已标准化</option><option value="ready">可发布</option><option value="archived">已归档</option></select>
+      <button id="search-button">查询</button>
+    </section>
+    <p id="error-message" class="error" hidden></p>
+    <section class="catalog-grid">
+      <div class="panel"><div class="panel-title"><span>商品列表</span><span id="count-label">0</span></div><div id="product-list" class="product-list"></div></div>
+      <div class="panel"><div class="panel-title"><span>商品详情</span><span id="detail-id">—</span></div><div id="product-detail" class="detail-empty">选择一个中央商品查看版本、变体和图片资产。</div></div>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
+

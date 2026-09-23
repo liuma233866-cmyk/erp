@@ -1,0 +1,38 @@
+          <section id="aiPanel" class="panel hidden ai-panel">
+            <div class="ai-workspace" id="aiWorkspace">
+              <div class="ai-workspace-head">
+                <div class="ai-brand-mark" aria-hidden="true">✦</div>
+                <div>
+                  <div class="ai-page-kicker">AI 工作台</div>
+                </div>
+              </div>
+
+              <div class="ai-welcome">
+                <div class="ai-welcome-orb" aria-hidden="true">✦</div>
+                <h2>今天想让 AI 帮你做什么？</h2>
+                <div class="ai-model-switcher ai-model-switcher-welcome" id="aiModelSelect"></div>
+              </div>
+
+              <div class="ai-chat-messages" id="aiChatMessages" aria-live="polite"></div>
+
+              <div class="ai-composer">
+                <div class="ai-paste" id="aiPasteArea" contenteditable="true" data-placeholder="输入你的内容…" spellcheck="false"></div>
+                <div class="ai-preview" id="aiImagePreview"></div>
+                <div class="ai-composer-toolbar">
+                  <div class="ai-tool-group">
+                    <label class="ai-tool-button ai-upload" title="上传图片">
+                      <span class="ai-tool-plus" aria-hidden="true">＋</span>
+                      <span>上传图片</span>
+                      <input id="aiImageInput" type="file" accept="image/*" />
+                    </label>
+                    <button type="button" class="ai-tool-button ai-clear-button" id="aiClearBtn">清空</button>
+                  </div>
+                  <div class="ai-submit-group">
+                    <span class="ai-connection-pill"><span class="ai-status-dot"></span>已连接</span>
+                    <button type="button" class="ai-send-button" id="aiSendBtn" aria-label="发送">↑</button>
+                  </div>
+                </div>
+                <p id="aiHint" class="message small"></p>
+              </div>
+            </div>
+          </section>

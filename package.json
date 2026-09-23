@@ -1,0 +1,19 @@
+{
+  "name": "ecommerce-order-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E-commerce order management admin with login and third-party API integration",
+  "main": "backend/server.js",
+  "dependencies": {
+    "iconv-lite": "^0.7.2",
+    "mysql2": "^3.20.0",
+    "pdf-lib": "^1.17.1",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "start": "node backend/server.js",
+    "convert:publish-prices": "node scripts/convert-publish-prices-rub-to-cny.js",
+    "test": "node --test backend/*.test.js frontend/*.test.js",
+    "test:v2": "node --test backend-v2/core/core.test.js backend-v2/security/security.test.js backend-v2/migrations/*.test.js backend-v2/central/*.test.js backend-v2/audit/audit.test.js backend-v2/http/v2Server.test.js backend-v2/db/pool.test.js frontend-v2/central/*.test.js"
+  }
+}

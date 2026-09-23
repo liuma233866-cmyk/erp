@@ -1,0 +1,140 @@
+          <section id="productOnlinePanel" class="panel hidden catalog-workspace online-workspace">
+            <div class="panel-head catalog-panel-head">
+              <div class="catalog-head-copy">
+                <span class="catalog-head-eyebrow">商品目录</span>
+                <h3>Yandex产品库</h3>
+                <p class="catalog-head-subtle">集中查看 Yandex 上架商品、价格、佣金、库存与同步状态。</p>
+              </div>
+              <div class="head-actions publish-head-actions online-head-actions">
+                <select id="onlineProductShopFilter" name="shopId" form="onlineProductFilterForm">
+                  <option value="">店铺(全部)</option>
+                </select>
+                <button type="submit" class="secondary-btn" form="onlineProductFilterForm">搜索</button>
+                <button id="onlineProductSaveBtn" type="button" class="secondary-btn">保存条件</button>
+                <button id="onlineProductResetBtn" type="button" class="secondary-btn">重置</button>
+                <button id="onlineExportBtn" type="button" class="secondary-btn">产品导出</button>
+                <button id="onlineCopyToPublishBtn" type="button" class="secondary-btn">复制选中到刊登</button>
+                <button id="syncOnlineProductsBtn" class="secondary-btn">同步产品</button>
+                <button id="refreshCardQualityBtn" type="button" class="secondary-btn">刷新卡片质量</button>
+                <button id="onlineCommissionUnmatchedBtn" type="button" class="secondary-btn">未匹配佣金清单</button>
+                <button id="createOnlineProductBtn" class="secondary-btn" disabled>创建产品</button>
+              </div>
+            </div>
+
+            <div class="online-summary-grid catalog-summary-grid">
+              <article class="online-summary-card">
+                <span>Yandex产品数</span>
+                <strong id="onlineProductCount">0</strong>
+              </article>
+              <article class="online-summary-card">
+                <span>已同步店铺</span>
+                <strong id="onlineProductShopCount">0</strong>
+              </article>
+              <article class="online-summary-card">
+                <span>最近同步</span>
+                <strong id="onlineProductSyncInfo">-</strong>
+              </article>
+            </div>
+
+            <form id="onlineProductFilterForm" class="online-advanced-filter catalog-filter-card">
+              <div class="field">
+                <label>标题</label>
+                <input name="title" type="text" placeholder="多个用逗号分隔，支持Excel粘贴" />
+              </div>
+              <div class="field">
+                <label>产品ID</label>
+                <input name="productId" type="text" placeholder="多个用逗号分隔，支持Excel粘贴" />
+              </div>
+              <div class="field">
+                <label>平台SKU</label>
+                <input name="marketSku" type="text" placeholder="多个用逗号分隔，支持Excel粘贴" />
+              </div>
+              <div class="field">
+                <label>店铺SKU</label>
+                <input name="shopSku" type="text" placeholder="多个用逗号分隔，支持Excel粘贴" />
+              </div>
+              <div class="field">
+                <label>品牌</label>
+                <input name="brand" type="text" placeholder="品牌名称" />
+              </div>
+              <div class="field">
+                <label>款式</label>
+                <input name="vendorCode" type="text" placeholder="款式/货号" />
+              </div>
+              <div class="field">
+                <label>类目</label>
+                <input name="categoryId" type="text" placeholder="类目ID" />
+              </div>
+              <div class="field">
+                <label>状态</label>
+                <input name="status" type="text" placeholder="如 ACTIVE/INACTIVE" />
+              </div>
+              <div class="field filter-actions">
+                <button type="submit">搜索</button>
+              </div>
+            </form>
+            <p id="onlineProductMessage" class="message small"></p>
+
+            <div id="onlineStatusTabs" class="online-status-tabs">
+              <button type="button" class="active" data-status-group="all">全部(0)</button>
+              <button type="button" data-status-group="active">在售(0)</button>
+              <button type="button" data-status-group="inactive">下架(0)</button>
+              <button type="button" data-status-group="other">其他(0)</button>
+            </div>
+
+            <div id="onlineTableWrap" class="table-wrap online-products-table publish-scrollbar-x catalog-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      <input id="onlineHeaderSelectAll" type="checkbox" aria-label="全选当前页" />
+                    </th>
+                    <th>产品信息</th>
+                    <th>产品状态</th>
+                    <th>卡片质量</th>
+                    <th>售价</th>
+                    <th>划线价</th>
+                    <th>佣金</th>
+                    <th>采购价(人民币)</th>
+                    <th>采购价(卢布)</th>
+                    <th>长</th>
+                    <th>宽</th>
+                    <th>高</th>
+                    <th>重量(kg)</th>
+                    <th>库存</th>
+                    <th>店铺</th>
+                    <th>操作</th>
+                    <th>利润</th>
+                  </tr>
+                </thead>
+                <tbody id="onlineProductsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="publish-footer-island online-footer-island">
+              <div id="onlineIslandScrollbar" class="publish-island-scrollbar" aria-label="在线产品横向滚动条">
+                <div id="onlineIslandScrollbarInner" class="publish-island-scrollbar-inner"></div>
+              </div>
+            </div>
+            <div class="online-footer-bar catalog-footer-bar">
+              <div class="online-select-actions">
+                <button id="onlineBatchInventoryBtn" type="button" class="secondary-btn">添加库存</button>
+                <button id="onlineSelectAllBtn" type="button" class="secondary-btn">全选</button>
+                <button id="onlineInvertSelectBtn" type="button" class="secondary-btn">反选</button>
+                <span id="onlineSelectedCount" class="small-text">已选 0 / 0 条</span>
+                <button id="onlineBatchDeleteBtn" type="button" class="secondary-btn">删除</button>
+              </div>
+              <div class="online-pagination">
+                <button id="onlinePrevPageBtn" type="button" class="secondary-btn">‹</button>
+                <span id="onlinePaginationInfo">1 / 1</span>
+                <button id="onlineNextPageBtn" type="button" class="secondary-btn">›</button>
+                <span>前往</span>
+                <input id="onlineGotoPage" type="number" min="1" step="1" />
+                <span>页</span>
+                <select id="onlinePageSize">
+                  <option value="20" selected>20条/页</option>
+                  <option value="50">50条/页</option>
+                  <option value="100">100条/页</option>
+                </select>
+              </div>
+            </div>
+          </section>

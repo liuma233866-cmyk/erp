@@ -1,0 +1,126 @@
+/* yandex-rates 页面专属样式。 */
+.logistics-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.logistics-tabs.platform-tabs {
+  margin-bottom: 8px;
+}
+.logistics-tabs.model-tabs {
+  margin-bottom: 16px;
+}
+.logistics-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 12px;
+  align-items: start;
+}
+.logistics-section .logistics-tabs {
+  grid-column: 1 / -1;
+}
+.logistics-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: #ffffff;
+}
+.logistics-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.logistics-result {
+  border: 1px dashed #cfd9ea;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fbff;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: #2f4663;
+}
+.yandex-rate-card {
+  grid-column: 1 / -1;
+  border: 1px solid #d9e4f4;
+  border-radius: 12px;
+  padding: 16px;
+  background: #ffffff;
+}
+.rate-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2b3b;
+  margin-bottom: 6px;
+}
+.rate-desc {
+  margin: 0 0 10px;
+  color: #2f4663;
+  font-size: 13px;
+}
+.rate-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.rate-panel {
+  border: 1px solid #e1e8f4;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f9fbff;
+}
+.rate-panel-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #1f2b3b;
+}
+.rate-country {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.rate-table-wrap {
+  overflow-x: auto;
+}
+.rate-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+.rate-table th,
+.rate-table td {
+  border: 1px solid #e1e8f4;
+  padding: 10px 12px;
+  vertical-align: top;
+  font-size: 13px;
+}
+.rate-table th {
+  background: #f3f7ff;
+  color: #2f4663;
+}
+.rate-table ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #2f4663;
+}
+.rate-section {
+  display: grid;
+  gap: 10px;
+}
+.rate-group td {
+  background: #f3f7ff;
+  font-weight: 600;
+  color: #2f4663;
+}
+.rate-example {
+  margin-top: 10px;
+  border-left: 3px solid #1b74d1;
+  padding-left: 10px;
+  color: #2f4663;
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+.rate-example-title {
+  font-weight: 600;
+}

@@ -1,0 +1,35 @@
+          <section id="yandexCommissionPanel" class="panel hidden">
+            <div class="panel-head">
+              <h3>Yandex佣金</h3>
+              <div class="head-actions">
+                <button id="syncYandexCommissionBtn" class="secondary-btn">计算 Yandex 佣金</button>
+              </div>
+            </div>
+            <div class="logistics-tabs platform-tabs" aria-label="佣金平台切换">
+              <button class="tab active" type="button" data-view="yandexCommissionPanel">Yandex佣金</button>
+              <button class="tab" type="button" data-view="ozonCommissionPanel">Ozon佣金</button>
+            </div>
+            <p id="yandexCommissionMessage" class="message small">按在线产品的真实类目、售价、尺寸和重量调用 Yandex API 计算佣金。</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>店铺</th>
+                    <th>俄文类目</th>
+                    <th>中文类目</th>
+                    <th>英文类目</th>
+                    <th>佣金</th>
+                    <th>同步时间</th>
+                  </tr>
+                </thead>
+                <tbody id="yandexCommissionSampleBody">
+                  <tr><td colspan="6">暂无数据</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-pager" style="margin-top:10px;display:flex;align-items:center;gap:10px;justify-content:flex-end;">
+              <button id="yandexCommissionPrevBtn" class="secondary-btn">上一页</button>
+              <span id="yandexCommissionPageInfo" class="message small">第 1 / 1 页</span>
+              <button id="yandexCommissionNextBtn" class="secondary-btn">下一页</button>
+            </div>
+          </section>

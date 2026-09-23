@@ -1,0 +1,31 @@
+          <section id="apiPanel" class="panel hidden">
+            <div class="panel-head">
+              <div>
+                <h3>店铺管理</h3>
+              </div>
+              <div class="head-actions">
+                <button id="openAddShopModalBtn">添加店铺</button>
+                <button id="syncApiBtn" class="secondary-btn">刷新店铺列表</button>
+              </div>
+            </div>
+            <p id="shopsMessage" class="message small"></p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>店铺ID</th>
+                    <th>店铺名称</th>
+                    <th>店铺编码</th>
+                    <th>平台</th>
+                    <th>凭证关系</th>
+                    <th>订单归属</th>
+                    <th>公司户</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="shopsTableBody"></tbody>
+              </table>
+            </div>
+          </section>

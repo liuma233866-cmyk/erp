@@ -1,0 +1,26 @@
+/* users 页面专属样式。 */
+.user-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(192, 221, 255, 0.08) 100%);
+  border: 1px solid rgba(227, 236, 249, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  max-width: 100%;
+}
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #eef5ff;
+  font-size: 16px;
+  font-weight: 700;
+}

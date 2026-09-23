@@ -1,0 +1,92 @@
+          <section id="aiImageTaskPanel" class="panel hidden">
+            <div class="panel-head">
+              <div class="ai-image-task-head-copy">
+                <h3>AI图任务</h3>
+              </div>
+              <div class="head-actions">
+                <button id="openAiImagePromptSettingsBtn" class="secondary-btn" type="button">设置</button>
+                <button id="refreshAiImageTasksBtn" type="button">刷新</button>
+              </div>
+            </div>
+            <div id="aiImageTaskStatusTabs" class="online-status-tabs ai-image-task-tabs">
+              <button class="tab active" type="button" data-ai-image-task-status="all">全部任务</button>
+              <button class="tab" type="button" data-ai-image-task-status="queued">排队中</button>
+              <button class="tab" type="button" data-ai-image-task-status="processing">进行中</button>
+              <button class="tab" type="button" data-ai-image-task-status="succeeded">完成</button>
+              <button class="tab" type="button" data-ai-image-task-status="failed">错误</button>
+            </div>
+            <form id="aiImageTaskSearchForm" class="ai-image-task-search" role="search">
+              <label class="sr-only" for="aiImageTaskSearchInput">搜索 SKU 或任务码</label>
+              <input id="aiImageTaskSearchInput" name="keyword" type="search" maxlength="128" autocomplete="off" placeholder="输入 SKU 或任务码" />
+              <button type="submit">搜索</button>
+              <button id="aiImageTaskSearchResetBtn" class="secondary-btn" type="button">清空</button>
+            </form>
+            <p id="aiImageTaskPageMessage" class="message small"></p>
+            <div class="ai-image-task-workspace" id="aiImageTaskWorkspace">
+              <div class="ai-config-list-card ai-image-task-list-card">
+                <div class="ai-config-list-head">
+                  <div>
+                    <h4>任务列表</h4>
+                    <span id="aiImageTaskCount" class="small-text">0 个任务</span>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th class="ai-task-check-column">
+                          <input id="aiImageTaskSelectAll" type="checkbox" aria-label="全选当前任务" />
+                        </th>
+                        <th>任务码</th>
+                        <th>来源</th>
+                        <th>模型</th>
+                        <th>状态</th>
+                        <th>结果</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="aiImageTasksTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div id="aiImageTaskDetailCard" class="ai-image-task-detail-card hidden">
+                <div id="aiImageTaskDetail" class="ai-image-task-detail">
+                  <div class="ai-image-task-detail-head">
+                    <div>
+                      <h4 id="aiImageTaskDetailTitle">-</h4>
+                      <span id="aiImageTaskDetailSubtitle" class="small-text"></span>
+                    </div>
+                    <span id="aiImageTaskDetailStatus" class="ai-model-status">草稿</span>
+                  </div>
+                  <div class="ai-image-task-detail-media">
+                    <figure class="ai-image-task-preview">
+                      <span>源图</span>
+                      <img id="aiImageTaskSourcePreview" class="hidden" alt="源图" />
+                    </figure>
+                    <figure class="ai-image-task-preview">
+                      <span>生成结果</span>
+                      <img id="aiImageTaskResultPreview" class="hidden" alt="生成结果" />
+                    </figure>
+                  </div>
+                  <div class="ai-image-task-detail-grid">
+                    <div><label>来源类型</label><strong id="aiImageTaskDetailSourceType">-</strong></div>
+                    <div><label>来源 ID</label><strong id="aiImageTaskDetailSourceId">-</strong></div>
+                    <div><label>关联商品</label><strong id="aiImageTaskDetailProductId">-</strong></div>
+                    <div><label>模型</label><strong id="aiImageTaskDetailModel">-</strong></div>
+                    <div><label>更新时间</label><strong id="aiImageTaskDetailUpdatedAt">-</strong></div>
+                    <div><label>进度</label><strong id="aiImageTaskDetailProgress">0%</strong></div>
+                  </div>
+                  <div class="ai-image-task-detail-block">
+                    <label>错误信息</label>
+                    <p id="aiImageTaskDetailError" class="ai-image-task-detail-text">-</p>
+                  </div>
+                  <div class="ai-image-task-detail-actions">
+                    <button id="aiImageTaskDetailEditBtn" class="secondary-btn" type="button" disabled>编辑</button>
+                    <button id="aiImageTaskDetailRetryBtn" class="secondary-btn" type="button" disabled>重试</button>
+                    <button id="aiImageTaskDetailDeleteBtn" class="danger-btn" type="button" disabled>删除</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>

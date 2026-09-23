@@ -1,0 +1,116 @@
+/* review-rules 页面专属样式。 */
+.review-rule-drawer-mask {
+  place-items: stretch;
+  justify-items: end;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(21, 34, 57, 0.3) 0%, rgba(21, 34, 57, 0.48) 100%);
+}
+.review-rule-modal {
+  width: min(94vw, 640px);
+  height: calc(100vh - 16px);
+  max-height: calc(100vh - 16px);
+  margin-left: auto;
+  border-radius: 28px;
+  padding: 18px 16px 14px 18px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  box-shadow:
+    -20px 0 56px rgba(17, 30, 49, 0.16),
+    0 26px 64px rgba(21, 38, 63, 0.14);
+  background:
+    radial-gradient(circle at top left, rgba(56, 109, 204, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 249, 255, 0.99) 100%);
+}
+.review-rule-modal .modal-head {
+  margin-bottom: 12px;
+  padding: 6px 8px 8px 0;
+}
+.review-rule-modal .modal-head h3 {
+  color: #1b2d48;
+  font-size: 18px;
+}
+.review-rule-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 12px;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 8px 8px 0;
+  scrollbar-gutter: stable;
+}
+.review-rule-form::-webkit-scrollbar {
+  width: 12px;
+}
+.review-rule-form::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(75, 108, 154, 0.4);
+  background-clip: padding-box;
+}
+.review-rule-form::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(232, 239, 249, 0.72), rgba(245, 248, 253, 0.3));
+  border-radius: 999px;
+}
+.review-rule-field {
+  display: grid;
+  gap: 6px;
+}
+.review-rule-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.review-rule-target-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d9e4f1;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #22324d;
+}
+.review-rule-field-full {
+  grid-column: 1 / -1;
+}
+.review-rule-shop-note {
+  margin-top: 4px;
+  color: #7a889c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.review-rule-form > button[type="submit"] {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 6px;
+  height: 48px;
+  border-radius: 14px;
+  box-shadow: 0 14px 28px rgba(47, 103, 200, 0.18);
+}
+.review-rule-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.review-rule-switch .pill-slider {
+  background: #f2b8bd;
+  box-shadow: inset 0 0 0 1px rgba(190, 50, 62, 0.18);
+}
+.review-rule-switch input:checked + .pill-slider {
+  background: #1fa971;
+  box-shadow: 0 0 0 3px rgba(31, 169, 113, 0.16);
+}
+.review-rule-enabled-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.review-rule-enabled-text {
+  font-weight: 600;
+  font-size: 13px;
+}

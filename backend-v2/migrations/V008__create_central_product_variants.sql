@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS central_product_variants (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  company_id BIGINT UNSIGNED NOT NULL,
+  central_product_id BIGINT UNSIGNED NOT NULL,
+  variant_key VARCHAR(128) NOT NULL,
+  system_sku VARCHAR(128) NOT NULL,
+  attributes_json JSON NOT NULL,
+  title_suffix VARCHAR(256) NULL,
+  purchase_price DECIMAL(12,2) NULL,
+  stock_count INT NOT NULL DEFAULT 0,
+  package_length_cm DECIMAL(10,2) NULL,
+  package_width_cm DECIMAL(10,2) NULL,
+  package_height_cm DECIMAL(10,2) NULL,
+  weight_kg DECIMAL(10,3) NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'active',
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_central_variants_product_key (company_id, central_product_id, variant_key),
+  UNIQUE KEY uq_central_variants_system_sku (company_id, system_sku),
+  KEY ix_central_variants_product (company_id, central_product_id, status),
+  CONSTRAINT fk_central_variants_product FOREIGN KEY (central_product_id) REFERENCES central_products (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

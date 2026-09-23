@@ -1,0 +1,56 @@
+          <section id="ozonProductPanel" class="panel hidden catalog-workspace online-workspace">
+            <div class="panel-head catalog-panel-head">
+              <div class="catalog-head-copy">
+                <span class="catalog-head-eyebrow">商品目录</span>
+                <h3>Ozon产品库</h3>
+                <p class="catalog-head-subtle">集中查看 Ozon 店铺商品、销售状态、价格、库存与店铺归属。</p>
+              </div>
+              <div class="head-actions">
+                <button id="syncOzonProductsBtn" class="secondary-btn" type="button">同步 Ozon 产品</button>
+              </div>
+            </div>
+
+            <div id="ozonProductStatusTabs" class="online-status-tabs ozon-status-tabs">
+              <button type="button" class="active" data-ozon-status="all">所有(0)</button>
+              <button type="button" data-ozon-status="selling">销售中(0)</button>
+              <button type="button" data-ozon-status="ready">准备销售(0)</button>
+              <button type="button" data-ozon-status="error">错误(0)</button>
+              <button type="button" data-ozon-status="edit">待修改(0)</button>
+              <button type="button" data-ozon-status="removed">商品已下架(0)</button>
+              <button type="button" data-ozon-status="archive">档案(0)</button>
+            </div>
+
+            <div class="online-summary-grid catalog-summary-grid">
+              <article class="online-summary-card">
+                <span>Ozon产品数</span>
+                <strong id="ozonProductCount">0</strong>
+              </article>
+              <article class="online-summary-card">
+                <span>已同步店铺</span>
+                <strong id="ozonProductShopCount">0</strong>
+              </article>
+              <article class="online-summary-card">
+                <span>最近同步</span>
+                <strong id="ozonProductSyncInfo">-</strong>
+              </article>
+            </div>
+
+            <p id="ozonProductMessage" class="message small"></p>
+            <div class="table-wrap online-products-table catalog-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>图片</th>
+                    <th>产品信息</th>
+                    <th>产品状态</th>
+                    <th>售价</th>
+                    <th>划线价</th>
+                    <th>库存</th>
+                    <th>店铺</th>
+                    <th>最近更新</th>
+                  </tr>
+                </thead>
+                <tbody id="ozonProductsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
