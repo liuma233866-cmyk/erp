@@ -1,0 +1,57 @@
+          <section id="collectionBoxPanel" class="panel hidden">
+            <div class="panel-head">
+              <div class="catalog-head-copy">
+                <span class="catalog-head-eyebrow">采集</span>
+                <h3>采集箱</h3>
+                <p class="catalog-head-subtle">浏览器扩展采集进来的商品，等待刊登。删除只影响采集箱里的采集条目。</p>
+              </div>
+              <div class="head-actions">
+                <button id="refreshCollectionBoxBtn" type="button" class="secondary-btn">刷新</button>
+                <button id="deleteCollectionBoxSelectedBtn" type="button" class="secondary-btn">删除选中</button>
+              </div>
+            </div>
+            <div class="online-summary-grid" style="margin-bottom:14px;">
+              <article class="online-summary-card"><span>采集总数</span><strong id="collectionBoxTotal">0</strong></article>
+              <article class="online-summary-card"><span>待刊登</span><strong id="collectionBoxPending">0</strong></article>
+              <article class="online-summary-card"><span>已刊登</span><strong id="collectionBoxPublished">0</strong></article>
+              <article class="online-summary-card"><span>失败</span><strong id="collectionBoxFailed">0</strong></article>
+            </div>
+            <form id="collectionBoxFilterForm" class="filter-form">
+              <input name="keyword" type="text" placeholder="标题 / SKU / 来源商品ID" aria-label="关键词" />
+              <select name="sourcePlatform" aria-label="来源平台">
+                <option value="">来源平台(全部)</option>
+                <option value="ozon">Ozon</option>
+                <option value="yandex">Yandex</option>
+              </select>
+              <select name="status" aria-label="状态">
+                <option value="">状态(全部)</option>
+                <option value="pending">待刊登</option>
+                <option value="published">已刊登</option>
+                <option value="failed">失败</option>
+              </select>
+              <button type="submit">筛选</button>
+              <button id="resetCollectionBoxFilterBtn" type="button" class="secondary-btn">重置</button>
+            </form>
+            <p id="collectionBoxMessage" class="message small"></p>
+            <div class="table-wrap online-products-table catalog-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th><input id="collectionBoxSelectAll" type="checkbox" aria-label="全选当前页" /></th>
+                    <th>采集时间</th>
+                    <th>来源</th>
+                    <th>商品</th>
+                    <th>AI图</th>
+                    <th>上架状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="collectionBoxTableBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination-row">
+              <button id="collectionBoxPrevPageBtn" type="button" class="secondary-btn">上一页</button>
+              <span id="collectionBoxPaginationInfo">第 1 页 / 共 1 页</span>
+              <button id="collectionBoxNextPageBtn" type="button" class="secondary-btn">下一页</button>
+            </div>
+          </section>

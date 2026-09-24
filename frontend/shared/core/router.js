@@ -6,6 +6,8 @@ const PANEL_ROUTES = Object.freeze({
   productOnlinePanel: "yandex-products",
   ozonProductPanel: "ozon-products",
   multiPlatformPublishPanel: "publish",
+  collectionBoxPanel: "collection-box",
+  publishRecordsPanel: "publish-records",
   ordersPanel: "orders",
   ordersV2Panel: "orders-v2",
   aiPanel: "ai",
@@ -259,6 +261,15 @@ async function ensurePanelData(panelId) {
     }
   }
 
+  // 采集箱与上架记录：每次进入都按各自的数据域重新拉取。
+  if (panelId === "collectionBoxPanel") {
+    await loadCollectionBox();
+  }
+
+  if (panelId === "publishRecordsPanel") {
+    await loadPublishRecords();
+  }
+
   if (panelId === "usersPanel") {
     if (!can("userManage")) {
       if (usersTableBody) usersTableBody.innerHTML = "<tr><td colspan='7'>仅管理员可查看</td></tr>";
@@ -372,6 +383,14 @@ async function switchPanel(panelId, options = {}) {
     fillPublishSettingsForm();
     renderPublishTable();
     renderPublishPagination();
+  }
+  if (resolvedPanelId === "collectionBoxPanel") {
+    renderCollectionBoxTable();
+    renderCollectionBoxPagination(state.collectionBoxPagination || {});
+  }
+  if (resolvedPanelId === "publishRecordsPanel") {
+    renderPublishRecordsTable();
+    renderPublishRecordsPagination(state.publishRecordsPagination || {});
   }
   if (resolvedPanelId === "reviewRulesPanel") {
     renderReviewRuleShopOptions();

@@ -624,7 +624,7 @@ function createPublishRoutes(deps) {
               return;
             }
             const responsePayload = publishResult.payload;
-            for (const item of picked) writeAudit(req, auth.user, { ...auditBase, actionType: "publish", resourceType: "product_publish", resourceId: item.id, requestBodyMasked: { id: item.id, sku: item.sku }, responseBodyMasked: { publishStatus: item.publishStatus, publishResultMessage: item.publishResultMessage } }, 200, responsePayload);
+            for (const item of picked) writeAudit(req, auth.user, { ...auditBase, actionType: "publish", resourceType: "product_publish", resourceId: item.id, requestBodyMasked: { id: item.id, sku: item.sku, title: item.title }, responseBodyMasked: { publishStatus: item.publishStatus, publishResultMessage: item.publishResultMessage } }, 200, responsePayload);
             respondApi(
               req,
               res,

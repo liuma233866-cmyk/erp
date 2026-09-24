@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="pages/shops/shops.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/ai/ai.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/publish/publish.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/collection-box/collection-box.css?v=20260924-panels" />
+    <link rel="stylesheet" href="pages/publish-records/publish-records.css?v=20260924-panels" />
     <link rel="stylesheet" href="pages/review-rules/review-rules.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/online-products/online-products.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/profit-detail/profit-detail.css?v=20260920-css-safe" />
@@ -84,7 +86,16 @@
                 <li><button class="side-link sub" data-view="ozonProductPanel">Ozon产品库</button></li>
               </ul>
             </li>
-            <li><button class="side-link" data-view="multiPlatformPublishPanel"><span class="side-icon">🚀</span><span class="side-text">多平台刊登</span></button></li>
+            <li class="side-group">
+              <button class="side-link side-group-toggle" data-submenu="publishSubmenu">
+                <span class="side-icon">🚀</span><span class="side-text">多平台刊登</span>
+              </button>
+              <ul class="side-submenu hidden" id="publishSubmenu">
+                <li><button class="side-link sub" data-view="multiPlatformPublishPanel">刊登工作台</button></li>
+                <li><button class="side-link sub" data-view="collectionBoxPanel">采集箱</button></li>
+                <li><button class="side-link sub" data-view="publishRecordsPanel">上架记录</button></li>
+              </ul>
+            </li>
             <li><button class="side-link" data-view="ordersPanel"><span class="side-icon">📦</span><span class="side-text">订单管理</span></button></li>
             <li><button class="side-link" data-view="ordersV2Panel"><span class="side-icon">🧾</span><span class="side-text">订单管理 V2</span></button></li>
             <li><button class="side-link" data-view="aiPanel"><span class="side-icon">🤖</span><span class="side-text">AI</span></button></li>
@@ -128,6 +139,10 @@
 <!--#include file="pages/reports/reports.html" -->
 
 <!--#include file="pages/publish/publish.html" -->
+
+<!--#include file="pages/collection-box/collection-box.html" -->
+
+<!--#include file="pages/publish-records/publish-records.html" -->
 
 <!--#include file="pages/product-list/product-list.html" -->
 
@@ -1083,6 +1098,8 @@
     <script src="pages/yandex-rates/yandex-rates.js"></script>
     <script src="pages/online-products/online-products.js?v=20260920-dom-sink"></script>
     <script src="pages/publish/publish.js?v=20260920-dom-sink"></script>
+    <script src="pages/collection-box/collection-box.js?v=20260924-panels"></script>
+    <script src="pages/publish-records/publish-records.js?v=20260924-panels"></script>
     <script src="app.js?v=20260920-dom-sink"></script>
   </body>
 </html>

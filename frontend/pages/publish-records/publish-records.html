@@ -1,0 +1,52 @@
+          <section id="publishRecordsPanel" class="panel hidden">
+            <div class="panel-head">
+              <div class="catalog-head-copy">
+                <span class="catalog-head-eyebrow">刊登</span>
+                <h3>上架记录</h3>
+                <p class="catalog-head-subtle">只记录「上架」动作：谁在什么时候上架了哪个 SKU、结果如何。</p>
+              </div>
+              <div class="head-actions">
+                <button id="refreshPublishRecordsBtn" type="button" class="secondary-btn">刷新</button>
+              </div>
+            </div>
+            <div class="online-summary-grid" style="margin-bottom:14px;">
+              <article class="online-summary-card"><span>上架记录</span><strong id="publishRecordsTotal">0</strong></article>
+              <article class="online-summary-card"><span>成功</span><strong id="publishRecordsSuccess">0</strong></article>
+              <article class="online-summary-card"><span>已拦截</span><strong id="publishRecordsBlocked">0</strong></article>
+              <article class="online-summary-card"><span>失败</span><strong id="publishRecordsFailed">0</strong></article>
+            </div>
+            <form id="publishRecordsFilterForm" class="filter-form">
+              <input name="keyword" type="text" placeholder="SKU / 标题 / 操作者 / 店铺" aria-label="关键词" />
+              <select name="status" aria-label="结果">
+                <option value="">结果(全部)</option>
+                <option value="success">成功</option>
+                <option value="blocked">已拦截</option>
+                <option value="failed">失败</option>
+              </select>
+              <button type="submit">筛选</button>
+              <button id="resetPublishRecordsFilterBtn" type="button" class="secondary-btn">重置</button>
+            </form>
+            <p id="publishRecordsMessage" class="message small"></p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>店铺</th>
+                    <th>平台</th>
+                    <th>SKU</th>
+                    <th>标题</th>
+                    <th>结果</th>
+                    <th>操作者</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody id="publishRecordsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination-row">
+              <button id="publishRecordsPrevPageBtn" type="button" class="secondary-btn">上一页</button>
+              <span id="publishRecordsPaginationInfo">第 1 页 / 共 1 页</span>
+              <button id="publishRecordsNextPageBtn" type="button" class="secondary-btn">下一页</button>
+            </div>
+          </section>

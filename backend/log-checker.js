@@ -39,7 +39,14 @@ function sanitizeProductPublishAuditPayload(auditMeta, value) {
     const item = value?.item && typeof value.item === "object" ? value.item : value;
     return { changedFields: item && typeof item === "object" ? Object.keys(item).filter((key) => key !== "id") : [] };
   }
-  if (actionType === "publish") return { recorded: true };
+  if (actionType === "publish") {
+    // 上架记录页需要展示 SKU/标题：保留这两个非敏感字段，即使产品之后被删除。
+    return {
+      recorded: true,
+      sku: String(value?.sku || ""),
+      title: String(value?.title || "").slice(0, 120)
+    };
+  }
   if (actionType === "delete") return { deleted: true };
   if (actionType === "copy") return { copied: true, aiTaskCreated: Boolean(value?.aiTaskId) };
   if (actionType === "ai_image") return { status: String(value?.status || (value?.errorMessage ? "failed" : "recorded")) };

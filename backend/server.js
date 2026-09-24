@@ -62,6 +62,8 @@ const { createAuthRoutes } = require("./routes/auth");;
 const { createAiRoutes } = require("./routes/ai");;
 const { createMarketCommissionRoutes } = require("./routes/market-commissions");;
 const { createCollectorRoutes } = require("./routes/collector");;
+const { createCollectionBoxRoutes } = require("./routes/collection-box");;
+const { createPublishRecordsRoutes } = require("./routes/publish-records");;
 const { buildOnlineProductKey, calculateYandexOnlineProductFees } = require("./yandex-tariffs");;
 const { enrichYandexItemsWithParameterValues, fetchYandexCategoryParameters } = require("./yandex-parameter-values");;
 const {
@@ -688,6 +690,28 @@ const marketCommissionRoutes = createMarketCommissionRoutes({
   syncYandexCommissionCatalogFromOnlineProducts,
   saveDatabase,
 });
+const collectionBoxRoutes = createCollectionBoxRoutes({
+  authService,
+  respondApi,
+  getDb: () => db,
+  parseJsonBody,
+  maskSensitive,
+  saveDatabase,
+  writeAudit,
+  getUserAssignedShopIds,
+  canUserAccessShop,
+  paginateItems,
+  readPositiveIntParam
+});
+const publishRecordsRoutes = createPublishRecordsRoutes({
+  authService,
+  respondApi,
+  getDb: () => db,
+  getUserAssignedShopIds,
+  canUserAccessShop,
+  paginateItems,
+  readPositiveIntParam
+});
 const aiRoutes = createAiRoutes({
   aiConfigModule,
   aiImagePromptsModule,
@@ -1151,6 +1175,18 @@ async function handleApi(req, res, url) {
 
 
   for (const route of collectorRoutes) {
+    if (route.matches(pathname, req.method)) {
+      await route.handler(req, res, query, auditBase, pathname, url, clientIp);
+      return;
+    }
+  }
+  for (const route of collectionBoxRoutes) {
+    if (route.matches(pathname, req.method)) {
+      await route.handler(req, res, query, auditBase, pathname, url, clientIp);
+      return;
+    }
+  }
+  for (const route of publishRecordsRoutes) {
     if (route.matches(pathname, req.method)) {
       await route.handler(req, res, query, auditBase, pathname, url, clientIp);
       return;

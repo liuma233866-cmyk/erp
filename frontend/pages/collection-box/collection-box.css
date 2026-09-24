@@ -1,0 +1,33 @@
+/* collection-box 页面专属样式：采集箱状态标签与来源列。 */
+.collection-source-cell {
+  min-width: 160px;
+}
+.collection-source-cell .product-sub {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+.collection-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b6479;
+  background: #eef2f8;
+}
+.collection-status.pending {
+  color: #8a5a00;
+  background: #fdf0d3;
+}
+.collection-status.published {
+  color: #12663a;
+  background: #e3f5eb;
+}
+.collection-status.failed {
+  color: #b0202f;
+  background: #fde7e9;
+}

@@ -20,6 +20,8 @@ function bindEvents() {
   bindProductListEvents();
   bindOnlineProductsEvents();
   bindPublishProductsEvents();
+  bindCollectionBoxEvents();
+  bindPublishRecordsEvents();
   bindProfitDetailEvents();
   bindFinanceEvents();
   bindCommissionsEvents();

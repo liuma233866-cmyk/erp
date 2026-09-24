@@ -1,0 +1,29 @@
+/* publish-records 页面专属样式：上架结果标签。 */
+.publish-record-result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.publish-record-result.success {
+  color: #12663a;
+  background: #e3f5eb;
+}
+.publish-record-result.failed {
+  color: #b0202f;
+  background: #fde7e9;
+}
+.publish-record-result.blocked {
+  color: #8a4b06;
+  background: #fdf0d8;
+}
+.publish-record-message {
+  max-width: 360px;
+  white-space: normal;
+  word-break: break-word;
+  color: #5d7291;
+}
