@@ -2,7 +2,7 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const { isSafeExternalHttpUrl } = require("./network-safety");
+const { isSafeExternalHttpUrl, isSafeExternalHttpUrlWithDnsValidation } = require("./network-safety");
 const { callWithThrottleRetry, isProviderThrottlingError } = require("./ai-provider-throttle");
 
 const MAX_PROMPT_LENGTH = 20000;
@@ -294,6 +294,9 @@ function createAiMainModule(deps) {
     const sourceImageUrl = String(task?.sourceImageUrl || "").trim();
     if (!sourceImageUrl) return { ok: false, statusCode: 400, message: "任务缺少源图片地址" };
     if (!isSafeExternalHttpUrl(sourceImageUrl)) return { ok: false, statusCode: 400, message: "源图片地址必须是公网 HTTP(S) 地址" };
+    if (!(await isSafeExternalHttpUrlWithDnsValidation(sourceImageUrl))) {
+      return { ok: false, statusCode: 400, message: "源图片地址解析到内网地址，已拒绝" };
+    }
     const selected = await selectModel(
       { companyId: String(task?.companyId || "system").trim() || "system", role: "admin" },
       String(task?.modelId || "").trim()

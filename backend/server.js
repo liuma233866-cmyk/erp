@@ -92,7 +92,7 @@ const {
   normalizeRole: normalizeRolePure,
   normalizeShopPermissions
 } = require("./permissions");;
-const { checkRateLimit } = require("./rate-limit");;
+const { checkRateLimit, pruneRateLimitBuckets } = require("./rate-limit");;
 const { paginateItems, readPositiveIntParam, validateNonEmptyString } = require("./pagination");;
 const { validateOptionalExternalHttpUrl } = require("./url-safety");;
 ;
@@ -882,9 +882,66 @@ async function closeAppRuntime() {
   sqlReady = false;
 }
 
+// 限流 bucket 每 10 分钟清理一次过期条目，避免长期运行内存增长。
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+let rateLimitCleanupTimer = null;
+
+function startRateLimitCleanup() {
+  if (rateLimitCleanupTimer) return;
+  rateLimitCleanupTimer = setInterval(() => {
+    try {
+      pruneRateLimitBuckets(loginRateBuckets, LOGIN_RATE_LIMIT_WINDOW_MS);
+      pruneRateLimitBuckets(apiRateBuckets, API_RATE_LIMIT_WINDOW_MS);
+    } catch (error) {
+      logError(`Rate limit cleanup failed: ${String(error)}`);
+    }
+  }, RATE_LIMIT_CLEANUP_INTERVAL_MS);
+  if (typeof rateLimitCleanupTimer.unref === "function") rateLimitCleanupTimer.unref();
+}
+
+let shutdownInProgress = false;
+
+// 优雅关闭：停止接收新请求 → 等写入队列落库 → 关闭连接池。
+// 强制退出定时器兜底，避免残留 keep-alive 连接把进程吊住。
+async function shutdownGracefully(signal) {
+  if (shutdownInProgress) return;
+  shutdownInProgress = true;
+  logInfo(`Received ${signal}, shutting down...`);
+  const forceExit = setTimeout(() => {
+    logError("Shutdown timed out, forcing exit.");
+    process.exit(1);
+  }, 5000);
+  if (typeof forceExit.unref === "function") forceExit.unref();
+  if (orderSyncTimer) {
+    clearTimeout(orderSyncTimer);
+    orderSyncTimer = null;
+  }
+  if (rateLimitCleanupTimer) {
+    clearInterval(rateLimitCleanupTimer);
+    rateLimitCleanupTimer = null;
+  }
+  try {
+    if (server.listening) {
+      await new Promise((resolve) => server.close(() => resolve()));
+    }
+  } catch (error) {
+    logError(`Closing HTTP server failed: ${String(error)}`);
+  }
+  try {
+    await databaseWriteQueue;
+  } catch (error) {
+    logError(`Flushing database writes failed: ${String(error)}`);
+  }
+  await closeAppRuntime();
+  clearTimeout(forceExit);
+  logInfo("Shutdown complete.");
+  process.exit(0);
+}
+
 async function startServer() {
   await initializeAppRuntime();
   startOrderSyncScheduler();
+  startRateLimitCleanup();
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(PORT, HOST, () => {
@@ -3203,6 +3260,14 @@ async function syncYandexCommissionCatalogFromOnlineProducts() {
 
 
 if (require.main === module) {
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, () => {
+      shutdownGracefully(signal).catch((error) => {
+        logError(`Shutdown failed: ${String(error)}`);
+        process.exit(1);
+      });
+    });
+  }
   startServer().catch((error) => {
     console.error("Server startup failed:", String(error?.stack || error));
     process.exitCode = 1;

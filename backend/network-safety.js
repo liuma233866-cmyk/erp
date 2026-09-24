@@ -1,3 +1,5 @@
+const dns = require("dns");
+
 function isPrivateIpv4(host) {
   if (/^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host)) return true;
   if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
@@ -34,6 +36,28 @@ function isSafeExternalHttpUrl(value) {
   return true;
 }
 
+// 在字面值检查之上再做一次 DNS 解析校验：域名解析到内网地址时拒绝，
+// 防止 DNS rebinding 绕过 hostname 检查。resolver 可注入，便于测试。
+async function isSafeExternalHttpUrlWithDnsValidation(value, resolver) {
+  if (!isSafeExternalHttpUrl(value)) return false;
+  let host = "";
+  try {
+    host = new URL(String(value)).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  const resolve4 = typeof resolver === "function" ? resolver : dns.promises.resolve4;
+  try {
+    const addresses = await resolve4(host);
+    if (!Array.isArray(addresses) || !addresses.length) return false;
+    return addresses.every((address) => !isPrivateIpv4(String(address)));
+  } catch (error) {
+    // 域名不存在（ENOTFOUND）交给后续请求自行失败；其他 DNS 异常保守拒绝。
+    if (error && error.code === "ENOTFOUND") return true;
+    return false;
+  }
+}
+
 // Resolve the client IP for rate limiting. X-Forwarded-For is only trusted when
 // the server sits behind a reverse proxy that overwrites it; when trusted, the
 // LAST entry is the address added by the closest trusted proxy, while earlier
@@ -47,4 +71,4 @@ function resolveClientIp(forwardedHeader, remoteAddress, trustProxy) {
   }
   return remoteAddress || "";
 }
-module.exports = { isSafeExternalHttpUrl, resolveClientIp };
+module.exports = { isSafeExternalHttpUrl, isSafeExternalHttpUrlWithDnsValidation, resolveClientIp };

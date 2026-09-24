@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { isSafeExternalHttpUrl, resolveClientIp } = require("./network-safety");
+const { isSafeExternalHttpUrl, isSafeExternalHttpUrlWithDnsValidation, resolveClientIp } = require("./network-safety");
 test("rejects private network URLs", () => {
   for (const value of ["http://127.0.0.1/x", "http://169.254.169.254/", "http://10.0.0.1/", "http://localhost/"]) assert.equal(isSafeExternalHttpUrl(value), false);
   assert.equal(isSafeExternalHttpUrl("https://example.com/image.png"), true);
@@ -39,4 +39,39 @@ test("falls back to the socket address when the trusted header is empty", () => 
   assert.equal(resolveClientIp("   ", "127.0.0.1", true), "127.0.0.1");
   assert.equal(resolveClientIp(undefined, "127.0.0.1", true), "127.0.0.1");
   assert.equal(resolveClientIp(undefined, "", true), "");
+});
+
+test("isSafeExternalHttpUrlWithDnsValidation rejects domains resolving to private IPs", async () => {
+  const resolveToPrivate = async () => ["192.168.1.10"];
+  assert.equal(await isSafeExternalHttpUrlWithDnsValidation("https://images.example.com/a.jpg", resolveToPrivate), false);
+});
+
+test("isSafeExternalHttpUrlWithDnsValidation allows domains resolving to public IPs", async () => {
+  const resolveToPublic = async () => ["93.158.134.216"];
+  assert.equal(await isSafeExternalHttpUrlWithDnsValidation("https://images.example.com/a.jpg", resolveToPublic), true);
+});
+
+test("isSafeExternalHttpUrlWithDnsValidation rejects literal private hosts without DNS", async () => {
+  let called = false;
+  const resolver = async () => {
+    called = true;
+    return ["93.158.134.216"];
+  };
+  assert.equal(await isSafeExternalHttpUrlWithDnsValidation("http://127.0.0.1/a.jpg", resolver), false);
+  assert.equal(called, false);
+});
+
+test("isSafeExternalHttpUrlWithDnsValidation treats ENOTFOUND as pass-through and other DNS errors as reject", async () => {
+  const notFound = async () => {
+    const error = new Error("not found");
+    error.code = "ENOTFOUND";
+    throw error;
+  };
+  const timeout = async () => {
+    const error = new Error("timeout");
+    error.code = "ETIMEOUT";
+    throw error;
+  };
+  assert.equal(await isSafeExternalHttpUrlWithDnsValidation("https://missing.example.com/a.jpg", notFound), true);
+  assert.equal(await isSafeExternalHttpUrlWithDnsValidation("https://flaky.example.com/a.jpg", timeout), false);
 });

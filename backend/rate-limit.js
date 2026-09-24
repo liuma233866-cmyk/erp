@@ -15,4 +15,22 @@ function checkRateLimit(bucketMap, key, windowMs, maxCount) {
   return { ok: false, retryAfterMs: Math.max(1, windowMs - (now - current.windowStart)) };
 }
 
-module.exports = { checkRateLimit };
+// 定期清理过期 bucket，避免长期运行时按 IP/账号累积导致内存增长。
+// 保留 2 倍窗口，保证刚过期的计数不会在边界上被立刻丢弃。
+function pruneRateLimitBuckets(bucketMap, windowMs, now = Date.now()) {
+  if (!(bucketMap instanceof Map)) return 0;
+  const window = Number(windowMs);
+  if (!Number.isFinite(window) || window <= 0) return 0;
+  const threshold = Number(now) - window * 2;
+  let removed = 0;
+  for (const [key, bucket] of bucketMap) {
+    const windowStart = Number(bucket?.windowStart || 0);
+    if (!windowStart || windowStart < threshold) {
+      bucketMap.delete(key);
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
+module.exports = { checkRateLimit, pruneRateLimitBuckets };

@@ -185,9 +185,17 @@ function getBearerToken(req) {
   return cookieMatch ? decodeURIComponent(String(cookieMatch[1] || "").trim()) : "";
 }
 
-function buildSessionCookie(token, maxAgeSeconds) {
+// 只有 HTTPS 部署才应该带 Secure 标志：在明文 HTTP 下开启会导致浏览器不再
+// 回传 Cookie（局域网 IP 访问时直接登录失效），所以默认关闭，由部署方显式打开。
+function isSecureCookieEnabled() {
+  const raw = String(process.env.COOKIE_SECURE || "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+function buildSessionCookie(token, maxAgeSeconds, isSecure = isSecureCookieEnabled()) {
   const value = encodeURIComponent(String(token || ""));
   const parts = [`auth_token=${value}`, "Path=/", "HttpOnly", "SameSite=Lax"];
+  if (isSecure) parts.push("Secure");
   parts.push(`Max-Age=${Number(maxAgeSeconds) > 0 ? Math.floor(Number(maxAgeSeconds)) : 0}`);
   return parts.join("; ");
 }
