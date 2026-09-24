@@ -72,12 +72,24 @@ function createPasswordHash(password) {
   return { passwordSalt, passwordHash: hashPassword(password, passwordSalt) };
 }
 
+// 恒定时间比较两个十六进制哈希；长度不一致时直接返回 false（timingSafeEqual
+// 在长度不同时会抛异常，所以先做长度检查）。
+function timingSafeHexEqual(left, right) {
+  const a = String(left || "");
+  const b = String(right || "");
+  if (!a || !b || a.length !== b.length) return false;
+  const bufferA = Buffer.from(a, "utf8");
+  const bufferB = Buffer.from(b, "utf8");
+  if (bufferA.length !== bufferB.length) return false;
+  return crypto.timingSafeEqual(bufferA, bufferB);
+}
+
 function verifyPassword(user, password, legacyPasswordSalt, iterations = PASSWORD_HASH_ITERATIONS) {
   if (!user || typeof user !== "object") return false;
   const salt = user.passwordSalt || legacyPasswordSalt;
-  if (user.passwordHash === hashPassword(password, salt, iterations)) return true;
+  if (timingSafeHexEqual(user.passwordHash, hashPassword(password, salt, iterations))) return true;
   // Backward compatibility: hashes created with the previous (lower) iteration count.
-  if (iterations !== LEGACY_HASH_ITERATIONS && user.passwordHash === hashPassword(password, salt, LEGACY_HASH_ITERATIONS)) return true;
+  if (iterations !== LEGACY_HASH_ITERATIONS && timingSafeHexEqual(user.passwordHash, hashPassword(password, salt, LEGACY_HASH_ITERATIONS))) return true;
   return false;
 }
 

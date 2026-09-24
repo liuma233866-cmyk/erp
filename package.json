@@ -6,7 +6,7 @@
   "main": "backend/server.js",
   "dependencies": {
     "iconv-lite": "^0.7.2",
-    "mysql2": "^3.20.0",
+    "mysql2": "^3.22.1",
     "pdf-lib": "^1.17.1",
     "xlsx": "^0.18.5"
   },
