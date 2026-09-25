@@ -21,6 +21,10 @@
   color: #8a4b06;
   background: #fdf0d8;
 }
+.publish-record-result.pending {
+  color: #1f4e8c;
+  background: #e4eefb;
+}
 .publish-record-message {
   max-width: 360px;
   white-space: normal;

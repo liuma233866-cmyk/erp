@@ -1,7 +1,9 @@
 // 从 server.js 拆出的路由注册表（collector 域）。
 
 function createCollectorRoutes(deps) {
-  const { authService, respondApi, getDb, parseJsonBody, maskSensitive, normalizePublishProductRecord, makeId, buildAiImageTaskCode, aiImageTasksModule, aiImagePromptsModule, ingestCollectorProductIntoCentral, normalizePublishSettings, executeOzonProductPublish, CENTRAL_CATALOG_ENABLED, ROLE_ADMIN, saveDatabase } = deps;
+  const { authService, respondApi, getDb, parseJsonBody, maskSensitive, normalizePublishProductRecord, makeId, buildAiImageTaskCode, aiImageTasksModule, aiImagePromptsModule, ingestCollectorProductIntoCentral, normalizePublishSettings, executeOzonProductPublish, CENTRAL_CATALOG_ENABLED, ROLE_ADMIN, saveDatabase, upsertCollectionBoxEntry, listCollectionBox } = deps;
+  // 采集后自动上架 Ozon 的结果也要进「上架记录」（见 page-stores.js）。
+  const recordPublishOutcome = typeof deps.recordPublishOutcome === "function" ? deps.recordPublishOutcome : () => ({});
   return [
     {
       matches: (pathname, method) => pathname === "/api/collector/products" && method === "POST",
@@ -77,6 +79,21 @@ function createCollectorRoutes(deps) {
                 changedIds.push(item.id);
                 created += 1;
               }
+              // 采集箱记自己的一份：删除采集箱条目不会影响刊登工作台。
+              upsertCollectionBoxEntry(listCollectionBox(getDb()), {
+                source: item.source,
+                sourcePlatform: item.sourcePlatform,
+                sourceProductId: item.sourceProductId,
+                sourceUrl: item.sourceUrl || item.collectUrl,
+                collectBatchId: item.collectBatchId,
+                title: item.title || item.name,
+                sku: item.sku || item.shopSku,
+                imageUrl: item.imageUrl,
+                aiImageStatus: item.aiImageStatus,
+                publishProductId: item.id,
+                shopId: item.shopId,
+                collectedAt: item.collectedAt || item.createdAt
+              });
               if (!item.aiTaskId) {
                 const taskCode = buildAiImageTaskCode(item);
                 const taskResult = await aiImageTasksModule.createSystemTask({
@@ -117,6 +134,7 @@ function createCollectorRoutes(deps) {
             let ozonPublish = null;
             if (publishSettings.erpAutoPublishToOzon && body?.autoPublish !== false && ozonItems.length) {
               ozonPublish = await executeOzonProductPublish(actor, ozonItems, String(body?.shopId || "").trim(), getDb().shops || []);
+              recordPublishOutcome(actor, ozonItems, { statusCode: 200, payload: ozonPublish, perItemStatuses: true });
             }
             const payload = { requestId: String(body?.requestId || "").trim(), created, updated, failed: errors.length, total: items.length, changedIds, aiTasks, errors, central: { enabled: CENTRAL_CATALOG_ENABLED, items: centralResults, fallbackCount: centralResults.filter((entry) => entry.skipped).length }, autoPublish: Boolean(ozonPublish), ozonPublish };
             respondApi(req, res, actor, { ...auditBase, actionType: "create", resourceType: "product_collect", requestBodyMasked: maskSensitive(body), responseBodyMasked: maskSensitive(payload) }, errors.length ? 207 : 200, payload);

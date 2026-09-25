@@ -43,6 +43,7 @@ const { filterAuditLogs, filterOrders, hasFilterQuery } = require("./order-filte
 const { YANDEX_LEGAL_RATE_URL_RU, YANDEX_LEGAL_RATE_URL_ZH, normalizeProductCategoryKnowledge, normalizeYandexCommissionCatalog } = require("./catalog-normalize");;
 const { fetchAllYandexOfferCards, fetchYandexCampaign, fetchYandexCategoryIndex, fetchYandexDeliveryServices, fetchYandexOfferCards, fetchYandexOfferMappings, fetchYandexOfferMappingsPaged, fetchYandexOrderDetail, fetchYandexOrderLabels, fetchYandexOrders } = require("./yandex-fetch");;
 const { buildLogCheckerReport, extractFreshLogEntries, formatAuditWarnings, readRecentLocalErrorTail, sanitizeAuditLogForClient, sanitizeProductPublishAuditPayload } = require("./log-checker");;
+const { upsertCollectionBoxEntry, applyPublishOutcome, listCollectionBox, listPublishRecords, seedOwnedPageStoresOnce, normalizeCollectionBoxEntry, normalizePublishRecordEntry } = require("./page-stores");;
 const { createAuthService } = require("./auth-service");;
 const { createSqlWriters, ORDER_PURCHASE_FIELDS } = require("./sql-persistence");;
 const { createRatesRoutes } = require("./routes/rates");;
@@ -678,6 +679,8 @@ const collectorRoutes = createCollectorRoutes({
   CENTRAL_CATALOG_ENABLED,
   ROLE_ADMIN,
   saveDatabase,
+  upsertCollectionBoxEntry,
+  listCollectionBox,
 });
 const marketCommissionRoutes = createMarketCommissionRoutes({
   authService,
@@ -701,7 +704,8 @@ const collectionBoxRoutes = createCollectionBoxRoutes({
   getUserAssignedShopIds,
   canUserAccessShop,
   paginateItems,
-  readPositiveIntParam
+  readPositiveIntParam,
+  listCollectionBox
 });
 const publishRecordsRoutes = createPublishRecordsRoutes({
   authService,
@@ -710,7 +714,8 @@ const publishRecordsRoutes = createPublishRecordsRoutes({
   getUserAssignedShopIds,
   canUserAccessShop,
   paginateItems,
-  readPositiveIntParam
+  readPositiveIntParam,
+  listPublishRecords
 });
 const aiRoutes = createAiRoutes({
   aiConfigModule,
@@ -829,6 +834,7 @@ const publishRoutes = createPublishRoutes({
   executeProductPublish,
   executeOzonProductPublish,
   publishOzonProducts,
+  recordPublishOutcome,
 });
 
 async function handleRequest(req, res) {
@@ -884,6 +890,14 @@ const server = http.createServer(handleRequest);
 async function initializeAppRuntime(options = {}) {
   db = options.database || createRuntimeDatabase();
   await initSqlPersistence();
+  // 采集箱 / 上架记录 的历史数据各归各表：只在升级后的第一次启动搬一次，
+  // 之后两个页面的数据由各自的数据流维护，互不接入。
+  try {
+    const pageStoreSeed = seedOwnedPageStoresOnce(db);
+    if (pageStoreSeed.changed) await saveDatabase();
+  } catch (error) {
+    logError(`Seeding collection box / publish records failed: ${String(error)}`);
+  }
   rotateInsecureDefaultAdmins(db);
   await aiConfigModule.initialize();
   await aiImagePromptsModule.initialize();
@@ -1200,6 +1214,14 @@ function respondApi(req, res, actorUser, auditMeta, statusCode, payload) {
   writeAudit(req, actorUser, auditMeta, statusCode, payload);
 }
 
+
+// 上架动作发生时，把结果写进「上架记录」自己的表，并同步采集箱条目的上架状态。
+// 这两个页面只读写自己的数据，不依赖审计日志和刊登池是否还有商品。
+function recordPublishOutcome(actorUser, items, options) {
+  const outcome = applyPublishOutcome(db, actorUser, items, options);
+  if (outcome.recorded) saveDatabase();
+  return outcome;
+}
 
 function writeAudit(req, actorUser, auditMeta, statusCode, payload) {
   const warningMessage = formatAuditWarnings(payload);
@@ -2516,6 +2538,12 @@ function createDefaultDatabase() {
     ],
     activeSessions: [],
     auditLogs: [],
+    // 采集箱 / 上架记录 各自的独立数据（不与其他模块互通，见 page-stores.js）。
+    collectionBox: [],
+    publishRecords: [],
+    collectionBoxSeededAt: "",
+    collectionBoxSeedVersion: "",
+    publishRecordsSeededAt: "",
     publishSettings: normalizePublishSettings({}),
     reviewRules: [],
     productCategoryKnowledge: normalizeProductCategoryKnowledge({}),
@@ -2571,6 +2599,15 @@ function normalizeDatabase(loaded) {
     messages: Array.isArray(loaded.messages) ? loaded.messages : [],
     activeSessions: Array.isArray(loaded.activeSessions) ? loaded.activeSessions : [],
     auditLogs: Array.isArray(loaded.auditLogs) ? loaded.auditLogs : [],
+    collectionBox: (Array.isArray(loaded.collectionBox) ? loaded.collectionBox : [])
+      .map(normalizeCollectionBoxEntry)
+      .filter(Boolean),
+    publishRecords: (Array.isArray(loaded.publishRecords) ? loaded.publishRecords : [])
+      .map(normalizePublishRecordEntry)
+      .filter(Boolean),
+    collectionBoxSeededAt: String(loaded.collectionBoxSeededAt || ""),
+    collectionBoxSeedVersion: String(loaded.collectionBoxSeedVersion || ""),
+    publishRecordsSeededAt: String(loaded.publishRecordsSeededAt || ""),
     publishSettings: normalizePublishSettings(loaded.publishSettings || {}),
     reviewRules: Array.isArray(loaded.reviewRules) ? loaded.reviewRules.map(normalizeReviewRule).filter((item) => item.id) : [],
     productCategoryKnowledge: normalizeProductCategoryKnowledge(loaded.productCategoryKnowledge || {}),

@@ -51,12 +51,14 @@ function renderPublishRecordsSummary(summary) {
   if (publishRecordsTotal) publishRecordsTotal.textContent = String(Number(data.total || 0) || 0);
   if (publishRecordsSuccess) publishRecordsSuccess.textContent = String(Number(data.success || 0) || 0);
   if (publishRecordsBlocked) publishRecordsBlocked.textContent = String(Number(data.blocked || 0) || 0);
+  if (publishRecordsPending) publishRecordsPending.textContent = String(Number(data.pending || 0) || 0);
   if (publishRecordsFailed) publishRecordsFailed.textContent = String(Number(data.failed || 0) || 0);
 }
 
 function getPublishRecordResultMeta(record) {
   const result = String(record?.result || "").trim().toLowerCase() || (record?.success ? "success" : "failed");
   if (result === "blocked") return { key: "blocked", label: "已拦截" };
+  if (result === "pending") return { key: "pending", label: "处理中" };
   if (result === "success") return { key: "success", label: "成功" };
   return { key: "failed", label: "失败" };
 }
@@ -130,6 +132,7 @@ const publishRecordsMessage = document.getElementById("publishRecordsMessage");
 const publishRecordsTotal = document.getElementById("publishRecordsTotal");
 const publishRecordsSuccess = document.getElementById("publishRecordsSuccess");
 const publishRecordsBlocked = document.getElementById("publishRecordsBlocked");
+const publishRecordsPending = document.getElementById("publishRecordsPending");
 const publishRecordsFailed = document.getElementById("publishRecordsFailed");
 const publishRecordsFilterForm = document.getElementById("publishRecordsFilterForm");
 const resetPublishRecordsFilterBtn = document.getElementById("resetPublishRecordsFilterBtn");

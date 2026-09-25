@@ -2,6 +2,8 @@
 
 function createPublishRoutes(deps) {
   const { authService, respondApi, getDb, parseJsonBody, parseRawBody, maskSensitive, saveDatabase, writeAudit, XLSX, normalizeRole, ROLE_ADMIN, buildPublishProductKey, resolveScopedDraftShopId, normalizePublishProductRecord, resolvePublishPlatformFromShopId, isLockedPublishProduct, makeId, normalizePublishSettings, normalizeCopyOptions, prepareCopyProductsWithCurrency, fetchStoredCbrRate, copyOnlineProductsToPublishDrafts, convertPublishPricesToCurrency, aiImagePromptsModule, aiImageTasksModule, createCopyAiImageTasks, buildAiImageTaskCode, canUserAccessShop, getUserAssignedShopIds, normalizeShopCurrency, sanitizeAuditLogForClient, executeProductPublish, executeOzonProductPublish, publishOzonProducts } = deps;
+  // 上架结果写进「上架记录」自己的表（见 page-stores.js）。
+  const recordPublishOutcome = typeof deps.recordPublishOutcome === "function" ? deps.recordPublishOutcome : () => ({});
   return [
     {
       matches: (pathname, method) => pathname === "/api/product-publish/import-template" && method === "GET",
@@ -620,11 +622,13 @@ function createPublishRoutes(deps) {
               }
               saveDatabase();
               for (const item of picked) writeAudit(req, auth.user, { ...auditBase, actionType: "publish", resourceType: "product_publish", resourceId: item.id, requestBodyMasked: { id: item.id, sku: item.sku } }, publishResult.statusCode, publishResult.payload);
+              recordPublishOutcome(auth.user, picked, { statusCode: publishResult.statusCode, payload: publishResult.payload });
               respondApi(req, res, auth.user, { ...auditBase, actionType: "publish", resourceType: "product_publish" }, publishResult.statusCode, publishResult.payload);
               return;
             }
             const responsePayload = publishResult.payload;
             for (const item of picked) writeAudit(req, auth.user, { ...auditBase, actionType: "publish", resourceType: "product_publish", resourceId: item.id, requestBodyMasked: { id: item.id, sku: item.sku, title: item.title }, responseBodyMasked: { publishStatus: item.publishStatus, publishResultMessage: item.publishResultMessage } }, 200, responsePayload);
+            recordPublishOutcome(auth.user, picked, { statusCode: 200, payload: responsePayload });
             respondApi(
               req,
               res,
@@ -736,6 +740,7 @@ function createPublishRoutes(deps) {
             results.push(...errors.map((entry) => ({ ...entry, failed: 1 })));
             saveDatabase();
             const responsePayload = { success, processing, failed, results };
+            recordPublishOutcome(auth.user, picked, { statusCode: 200, payload: responsePayload, perItemStatuses: true });
             respondApi(req, res, auth.user, { ...auditBase, actionType: "publish", resourceType: "product_publish", requestBodyMasked: maskSensitive(body), responseBodyMasked: maskSensitive(responsePayload) }, 200, responsePayload);
             return;
       }
