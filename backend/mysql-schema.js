@@ -47,6 +47,46 @@ const REQUIRED_TABLE_DDLS = [`CREATE TABLE IF NOT EXISTS yandex_card_quality_lat
   withdrawFeeRub DECIMAL(18,4), withdrawFeeRmb DECIMAL(18,4), transferFeeRub DECIMAL(18,4), transferFeeRmb DECIMAL(18,4),
   packingFeeRub DECIMAL(18,4), packingFeeRmb DECIMAL(18,4), withdrawPercent DECIMAL(18,4), transferPercent DECIMAL(18,4),
   applyToOrders TINYINT(1), applyToOnlineProducts TINYINT(1), KEY idx_review_rules_priority (priority), KEY idx_review_rules_updated (updatedAt)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`, `CREATE TABLE IF NOT EXISTS collection_box (
+  id VARCHAR(128) NOT NULL PRIMARY KEY,
+  source VARCHAR(128) NOT NULL DEFAULT '',
+  sourcePlatform VARCHAR(32) NOT NULL DEFAULT '',
+  sourceProductId VARCHAR(191) NOT NULL DEFAULT '',
+  sourceUrl TEXT,
+  collectBatchId VARCHAR(128) NOT NULL DEFAULT '',
+  title TEXT,
+  sku VARCHAR(191) NOT NULL DEFAULT '',
+  imageUrl TEXT,
+  aiImageStatus VARCHAR(32) NOT NULL DEFAULT '',
+  publishStatus VARCHAR(32) NOT NULL DEFAULT 'draft',
+  publishMessage TEXT,
+  publishProductId VARCHAR(128) NOT NULL DEFAULT '',
+  shopId VARCHAR(128) NOT NULL DEFAULT '',
+  collectedAt VARCHAR(64) NOT NULL DEFAULT '',
+  createdAt DATETIME(6) NULL,
+  updatedAt DATETIME(6) NULL,
+  KEY idx_collection_box_status (publishStatus),
+  KEY idx_collection_box_shop (shopId),
+  KEY idx_collection_box_platform (sourcePlatform),
+  KEY idx_collection_box_collected (collectedAt)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`, `CREATE TABLE IF NOT EXISTS publish_records (
+  id VARCHAR(128) NOT NULL PRIMARY KEY,
+  ts DATETIME(6) NULL,
+  actorUsername VARCHAR(128) NOT NULL DEFAULT '',
+  result VARCHAR(16) NOT NULL DEFAULT 'success',
+  statusCode INT NOT NULL DEFAULT 0,
+  message TEXT,
+  productId VARCHAR(128) NOT NULL DEFAULT '',
+  sku VARCHAR(191) NOT NULL DEFAULT '',
+  title TEXT,
+  shopId VARCHAR(128) NOT NULL DEFAULT '',
+  shopName VARCHAR(255) NOT NULL DEFAULT '',
+  platform VARCHAR(32) NOT NULL DEFAULT '',
+  publishStatus VARCHAR(32) NOT NULL DEFAULT '',
+  KEY idx_publish_records_ts (ts),
+  KEY idx_publish_records_result (result),
+  KEY idx_publish_records_shop (shopId),
+  KEY idx_publish_records_product (productId)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`];
 
 const REQUIRED_TABLE_DDL = REQUIRED_TABLE_DDLS.join(";\n");

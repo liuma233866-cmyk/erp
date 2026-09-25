@@ -4,6 +4,8 @@ function createCollectorRoutes(deps) {
   const { authService, respondApi, getDb, parseJsonBody, maskSensitive, normalizePublishProductRecord, makeId, buildAiImageTaskCode, aiImageTasksModule, aiImagePromptsModule, ingestCollectorProductIntoCentral, normalizePublishSettings, executeOzonProductPublish, CENTRAL_CATALOG_ENABLED, ROLE_ADMIN, saveDatabase, upsertCollectionBoxEntry, listCollectionBox } = deps;
   // 采集后自动上架 Ozon 的结果也要进「上架记录」（见 page-stores.js）。
   const recordPublishOutcome = typeof deps.recordPublishOutcome === "function" ? deps.recordPublishOutcome : () => ({});
+  // 采集箱有自己的表（collection_box），投递进来就落库。
+  const persistCollectionBoxEntries = typeof deps.persistCollectionBoxEntries === "function" ? deps.persistCollectionBoxEntries : () => {};
   return [
     {
       matches: (pathname, method) => pathname === "/api/collector/products" && method === "POST",
@@ -80,7 +82,7 @@ function createCollectorRoutes(deps) {
                 created += 1;
               }
               // 采集箱记自己的一份：删除采集箱条目不会影响刊登工作台。
-              upsertCollectionBoxEntry(listCollectionBox(getDb()), {
+              const boxEntry = upsertCollectionBoxEntry(listCollectionBox(getDb()), {
                 source: item.source,
                 sourcePlatform: item.sourcePlatform,
                 sourceProductId: item.sourceProductId,
@@ -94,6 +96,7 @@ function createCollectorRoutes(deps) {
                 shopId: item.shopId,
                 collectedAt: item.collectedAt || item.createdAt
               });
+              if (boxEntry) persistCollectionBoxEntries([boxEntry]);
               if (!item.aiTaskId) {
                 const taskCode = buildAiImageTaskCode(item);
                 const taskResult = await aiImageTasksModule.createSystemTask({

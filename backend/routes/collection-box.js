@@ -16,7 +16,8 @@ function createCollectionBoxRoutes(deps) {
     canUserAccessShop,
     paginateItems,
     readPositiveIntParam,
-    listCollectionBox
+    listCollectionBox,
+    deleteCollectionBoxEntries
   } = deps;
 
   function getPublishStatusGroup(item) {
@@ -128,6 +129,8 @@ function createCollectionBoxRoutes(deps) {
         const before = box.length;
         getDb().collectionBox = box.filter((item) => !idSet.has(String(item?.id || "")));
         const removed = before - getDb().collectionBox.length;
+        // 只删采集箱自己的表，刊登工作台/产品库不动。
+        if (typeof deleteCollectionBoxEntries === "function") deleteCollectionBoxEntries(found.map((item) => item.id));
         saveDatabase();
         for (const item of found) {
           writeAudit(req, auth.user, {

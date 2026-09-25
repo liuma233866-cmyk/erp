@@ -2,6 +2,7 @@ const { normalizeShopCurrency } = require("./yandex-publish-service");
 const { normalizeOnlineProductRecord } = require("./publish-normalize");
 const { normalizeReviewRule } = require("./settings-normalize");
 const { sessionSqlValues, userSqlValues } = require("./sql-identity-store");
+const { normalizeCollectionBoxEntry, normalizePublishRecordEntry } = require("./page-stores");
 
 const ONLINE_PRODUCT_SQL_COLUMNS = [
   "id", "shopId", "companyId", "provider", "shopName", "campaignId", "offerId", "shopSku", "name", "vendor", "vendorCode", "marketSku",
@@ -101,6 +102,10 @@ async function saveDatabaseToSql() {
   const snapshot = serializeDatabase(getDb());
   delete snapshot.orders;
   delete snapshot.orderPurchaseOverrides;
+  // 采集箱 / 上架记录 有自己的表（collection_box / publish_records），
+  // 不再进 AppState 快照。
+  delete snapshot.collectionBox;
+  delete snapshot.publishRecords;
   const serialized = JSON.stringify(snapshot);
   await Promise.resolve(
     getSqlPool().execute(
@@ -352,12 +357,145 @@ async function deleteReviewRuleFromSql(ruleId) {
   await getSqlPool().execute("DELETE FROM review_rules WHERE id = ?", [String(ruleId || "").trim()]);
 }
 
+// ---------- 采集箱 / 上架记录：各自独立的表 ----------
+
+const COLLECTION_BOX_SQL_COLUMNS = [
+  "id", "source", "sourcePlatform", "sourceProductId", "sourceUrl", "collectBatchId",
+  "title", "sku", "imageUrl", "aiImageStatus", "publishStatus", "publishMessage",
+  "publishProductId", "shopId", "collectedAt", "createdAt", "updatedAt"
+];
+
+const PUBLISH_RECORD_SQL_COLUMNS = [
+  "id", "ts", "actorUsername", "result", "statusCode", "message",
+  "productId", "sku", "title", "shopId", "shopName", "platform", "publishStatus"
+];
+
+// mysql2 只接受 Date 或 "YYYY-MM-DD HH:mm:ss.SSS"，带 Z 的 ISO 字符串会被严格模式拒绝。
+function toSqlDateTime(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function toIsoText(value) {
+  if (!value) return "";
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function collectionBoxSqlValues(entry) {
+  const normalized = normalizeCollectionBoxEntry(entry) || {};
+  return COLLECTION_BOX_SQL_COLUMNS.map((column) => {
+    if (column === "createdAt" || column === "updatedAt") return toSqlDateTime(normalized[column]);
+    return normalized[column] === undefined ? "" : normalized[column];
+  });
+}
+
+function hydrateCollectionBoxFromSqlRow(row) {
+  if (!row) return null;
+  return normalizeCollectionBoxEntry({
+    id: row.id,
+    source: row.source,
+    sourcePlatform: row.sourcePlatform,
+    sourceProductId: row.sourceProductId,
+    sourceUrl: row.sourceUrl,
+    collectBatchId: row.collectBatchId,
+    title: row.title,
+    sku: row.sku,
+    imageUrl: row.imageUrl,
+    aiImageStatus: row.aiImageStatus,
+    publishStatus: row.publishStatus,
+    publishMessage: row.publishMessage,
+    publishProductId: row.publishProductId,
+    shopId: row.shopId,
+    collectedAt: row.collectedAt,
+    createdAt: toIsoText(row.createdAt),
+    updatedAt: toIsoText(row.updatedAt)
+  });
+}
+
+function publishRecordSqlValues(record) {
+  const normalized = normalizePublishRecordEntry(record) || {};
+  return PUBLISH_RECORD_SQL_COLUMNS.map((column) => {
+    if (column === "ts") return toSqlDateTime(normalized.ts);
+    if (column === "statusCode") return Number(normalized.statusCode || 0) || 0;
+    return normalized[column] === undefined ? "" : normalized[column];
+  });
+}
+
+function hydratePublishRecordFromSqlRow(row) {
+  if (!row) return null;
+  return normalizePublishRecordEntry({
+    id: row.id,
+    ts: toIsoText(row.ts),
+    actorUsername: row.actorUsername,
+    result: row.result,
+    statusCode: row.statusCode,
+    message: row.message,
+    productId: row.productId,
+    sku: row.sku,
+    title: row.title,
+    shopId: row.shopId,
+    shopName: row.shopName,
+    platform: row.platform,
+    publishStatus: row.publishStatus
+  });
+}
+
+// 采集箱：按条目 upsert（同一条采集重复投递就更新那一行）。
+async function saveCollectionBoxToSql(entries) {
+  if (!isSqlReady() || !getSqlPool()) return;
+  const rows = (Array.isArray(entries) ? entries : []).filter((entry) => String(entry?.id || "").trim());
+  if (!rows.length) return;
+  const placeholders = COLLECTION_BOX_SQL_COLUMNS.map(() => "?").join(", ");
+  const updates = COLLECTION_BOX_SQL_COLUMNS.slice(1).map((column) => `${column} = VALUES(${column})`).join(", ");
+  const sql = `INSERT INTO collection_box (${COLLECTION_BOX_SQL_COLUMNS.join(", ")}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updates}`;
+  for (const entry of rows) {
+    await getSqlPool().execute(sql, collectionBoxSqlValues(entry));
+  }
+}
+
+async function deleteCollectionBoxFromSql(ids) {
+  if (!isSqlReady() || !getSqlPool()) return;
+  const list = (Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()).filter(Boolean);
+  if (!list.length) return;
+  const placeholders = list.map(() => "?").join(", ");
+  await getSqlPool().execute(`DELETE FROM collection_box WHERE id IN (${placeholders})`, list);
+}
+
+// 上架记录：只追加，不覆盖历史。
+async function savePublishRecordsToSql(records) {
+  if (!isSqlReady() || !getSqlPool()) return;
+  const rows = (Array.isArray(records) ? records : []).filter((record) => String(record?.id || "").trim());
+  if (!rows.length) return;
+  const placeholders = PUBLISH_RECORD_SQL_COLUMNS.map(() => "?").join(", ");
+  const updates = PUBLISH_RECORD_SQL_COLUMNS.slice(1).map((column) => `${column} = VALUES(${column})`).join(", ");
+  const sql = `INSERT INTO publish_records (${PUBLISH_RECORD_SQL_COLUMNS.join(", ")}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updates}`;
+  for (const record of rows) {
+    await getSqlPool().execute(sql, publishRecordSqlValues(record));
+  }
+}
+
+async function loadPageStoreRowsFromSql() {
+  if (!isSqlReady() || !getSqlPool()) return { collectionBox: [], publishRecords: [] };
+  const [boxRows] = await getSqlPool().query("SELECT * FROM collection_box ORDER BY collectedAt DESC, createdAt DESC");
+  const [recordRows] = await getSqlPool().query("SELECT * FROM publish_records ORDER BY ts DESC");
+  return {
+    collectionBox: (Array.isArray(boxRows) ? boxRows : []).map(hydrateCollectionBoxFromSqlRow).filter(Boolean),
+    publishRecords: (Array.isArray(recordRows) ? recordRows : []).map(hydratePublishRecordFromSqlRow).filter(Boolean)
+  };
+}
+
   return {
     saveShopToSql, deleteShopFromSql, saveDatabaseToSql, saveShopsToSql,
     saveReviewRulesToSql, saveUsersToSql, deleteUserFromSql, saveSessionsToSql,
     hydrateOnlineProductFromSqlRow, onlineProductSqlValues, saveOnlineProductsToSql,
     saveOrdersToSql, saveSingleOrderPurchaseToSql, reviewRuleSqlValues,
-    saveReviewRuleToSql, deleteReviewRuleFromSql
+    saveReviewRuleToSql, deleteReviewRuleFromSql,
+    collectionBoxSqlValues, saveCollectionBoxToSql, deleteCollectionBoxFromSql,
+    hydrateCollectionBoxFromSqlRow,
+    publishRecordSqlValues, savePublishRecordsToSql, hydratePublishRecordFromSqlRow,
+    loadPageStoreRowsFromSql
   };
 }
 

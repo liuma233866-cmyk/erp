@@ -6,8 +6,7 @@ const {
   upsertCollectionBoxEntry,
   appendPublishRecord,
   applyPublishOutcome,
-  collectorKey,
-  resetOwnedPageStoresOnce
+  collectorKey
 } = require("./page-stores");
 
 test("采集器同一条商品重复投递只更新采集箱里的同一条", () => {
@@ -105,31 +104,13 @@ test("上架记录写到 5000 条封顶，不会无限增长", () => {
   assert.equal(records[0].sku, "SKU-5009");
 });
 
-test("启动时清掉历史数据，之后不再重复清", () => {
-  const db = {
-    shops: [],
-    publishProducts: [
-      { id: "PUB-1", source: "ozon-yandex-collector-v2", sku: "SKU-1", title: "老的采集商品" },
-      { id: "PUB-2", source: "yandex_online_product", sku: "SKU-2", title: "老的复制商品" }
-    ],
-    auditLogs: [
-      { id: "AUD-1", ts: "2026-09-20T10:00:00.000Z", resourceType: "product_publish", actionType: "publish", resourceId: "PUB-1", statusCode: 200, success: true }
-    ],
-    collectionBox: [{ id: "CB-1", sourcePlatform: "ozon", sourceProductId: "SKU-1", title: "之前导入的采集条目" }],
-    publishRecords: [{ id: "PR-1", ts: "2026-09-20T10:00:00.000Z", result: "success", sku: "SKU-1" }]
-  };
+test("上架结果返回刚落库的记录，方便写进 publish_records 表", () => {
+  const db = { shops: [], publishRecords: [], collectionBox: [{ id: "CB-1", publishProductId: "PUB-1", publishStatus: "draft" }] };
+  const outcome = applyPublishOutcome(db, { username: "admin2" }, [{ id: "PUB-1", sku: "SKU-1", publishStatus: "success" }], { statusCode: 200, payload: {} });
 
-  assert.equal(resetOwnedPageStoresOnce(db), true);
-  assert.equal(db.collectionBox.length, 0);
-  assert.equal(db.publishRecords.length, 0);
-  assert.equal(db.publishProducts.length, 2, "刊登工作台的数据不受影响");
-  assert.equal(db.auditLogs.length, 1, "审计日志不受影响");
-
-  const later = {
-    collectionBox: [{ id: "CB-2", sourcePlatform: "ozon", sourceProductId: "SKU-9", title: "新采集的" }],
-    publishRecords: [],
-    pageStoresResetVersion: db.pageStoresResetVersion
-  };
-  assert.equal(resetOwnedPageStoresOnce(later), false);
-  assert.equal(later.collectionBox.length, 1, "新产生的数据不会被清");
+  assert.equal(outcome.records.length, 1);
+  assert.equal(outcome.records[0].id, db.publishRecords[0].id);
+  assert.equal(outcome.boxEntries.length, 1);
+  assert.equal(outcome.boxEntries[0].id, "CB-1");
+  assert.equal(outcome.boxEntries[0].publishStatus, "success");
 });

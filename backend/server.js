@@ -43,7 +43,7 @@ const { filterAuditLogs, filterOrders, hasFilterQuery } = require("./order-filte
 const { YANDEX_LEGAL_RATE_URL_RU, YANDEX_LEGAL_RATE_URL_ZH, normalizeProductCategoryKnowledge, normalizeYandexCommissionCatalog } = require("./catalog-normalize");;
 const { fetchAllYandexOfferCards, fetchYandexCampaign, fetchYandexCategoryIndex, fetchYandexDeliveryServices, fetchYandexOfferCards, fetchYandexOfferMappings, fetchYandexOfferMappingsPaged, fetchYandexOrderDetail, fetchYandexOrderLabels, fetchYandexOrders } = require("./yandex-fetch");;
 const { buildLogCheckerReport, extractFreshLogEntries, formatAuditWarnings, readRecentLocalErrorTail, sanitizeAuditLogForClient, sanitizeProductPublishAuditPayload } = require("./log-checker");;
-const { upsertCollectionBoxEntry, applyPublishOutcome, listCollectionBox, listPublishRecords, resetOwnedPageStoresOnce, normalizeCollectionBoxEntry, normalizePublishRecordEntry } = require("./page-stores");;
+const { upsertCollectionBoxEntry, applyPublishOutcome, listCollectionBox, listPublishRecords } = require("./page-stores");;
 const { createAuthService } = require("./auth-service");;
 const { createSqlWriters, ORDER_PURCHASE_FIELDS } = require("./sql-persistence");;
 const { createRatesRoutes } = require("./routes/rates");;
@@ -681,6 +681,7 @@ const collectorRoutes = createCollectorRoutes({
   saveDatabase,
   upsertCollectionBoxEntry,
   listCollectionBox,
+  persistCollectionBoxEntries,
 });
 const marketCommissionRoutes = createMarketCommissionRoutes({
   authService,
@@ -705,7 +706,8 @@ const collectionBoxRoutes = createCollectionBoxRoutes({
   canUserAccessShop,
   paginateItems,
   readPositiveIntParam,
-  listCollectionBox
+  listCollectionBox,
+  deleteCollectionBoxEntries
 });
 const publishRecordsRoutes = createPublishRecordsRoutes({
   authService,
@@ -890,12 +892,16 @@ const server = http.createServer(handleRequest);
 async function initializeAppRuntime(options = {}) {
   db = options.database || createRuntimeDatabase();
   await initSqlPersistence();
-  // 采集箱 / 上架记录 重新开始：旧数据一律清掉，不导入任何历史，
-  // 之后只记录各自产生的新数据。跑一次记版本。
+  // 采集箱 / 上架记录 有自己的表（collection_box / publish_records），
+  // 启动时从表里读，不读 AppState 快照，也不导入任何历史数据。
   try {
-    if (resetOwnedPageStoresOnce(db)) await saveDatabase();
+    const pageStoreRows = await sqlWriters.loadPageStoreRowsFromSql();
+    db.collectionBox = pageStoreRows.collectionBox;
+    db.publishRecords = pageStoreRows.publishRecords;
   } catch (error) {
-    logError(`Resetting collection box / publish records failed: ${String(error)}`);
+    logError(`Loading collection box / publish records failed: ${String(error)}`);
+    db.collectionBox = [];
+    db.publishRecords = [];
   }
   rotateInsecureDefaultAdmins(db);
   await aiConfigModule.initialize();
@@ -1214,11 +1220,40 @@ function respondApi(req, res, actorUser, auditMeta, statusCode, payload) {
 }
 
 
+// 采集箱 / 上架记录 都写进自己的表；AppState 快照里不再放这两个集合。
+function persistCollectionBoxEntries(entries) {
+  const rows = (Array.isArray(entries) ? entries : []).filter(Boolean);
+  if (!rows.length) return Promise.resolve();
+  return Promise.resolve()
+    .then(() => sqlWriters.saveCollectionBoxToSql(rows))
+    .catch((error) => logError(`Saving collection box failed: ${String(error)}`));
+}
+
+function deleteCollectionBoxEntries(ids) {
+  const list = (Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()).filter(Boolean);
+  if (!list.length) return Promise.resolve();
+  return Promise.resolve()
+    .then(() => sqlWriters.deleteCollectionBoxFromSql(list))
+    .catch((error) => logError(`Deleting collection box rows failed: ${String(error)}`));
+}
+
+function persistPublishRecords(records) {
+  const rows = (Array.isArray(records) ? records : []).filter(Boolean);
+  if (!rows.length) return Promise.resolve();
+  return Promise.resolve()
+    .then(() => sqlWriters.savePublishRecordsToSql(rows))
+    .catch((error) => logError(`Saving publish records failed: ${String(error)}`));
+}
+
 // 上架动作发生时，把结果写进「上架记录」自己的表，并同步采集箱条目的上架状态。
 // 这两个页面只读写自己的数据，不依赖审计日志和刊登池是否还有商品。
 function recordPublishOutcome(actorUser, items, options) {
   const outcome = applyPublishOutcome(db, actorUser, items, options);
-  if (outcome.recorded) saveDatabase();
+  if (outcome.recorded) {
+    persistPublishRecords(outcome.records);
+    persistCollectionBoxEntries(outcome.boxEntries);
+    saveDatabase();
+  }
   return outcome;
 }
 
@@ -2537,10 +2572,6 @@ function createDefaultDatabase() {
     ],
     activeSessions: [],
     auditLogs: [],
-    // 采集箱 / 上架记录 各自的独立数据（不与其他模块互通，见 page-stores.js）。
-    collectionBox: [],
-    publishRecords: [],
-    pageStoresResetVersion: "",
     publishSettings: normalizePublishSettings({}),
     reviewRules: [],
     productCategoryKnowledge: normalizeProductCategoryKnowledge({}),
@@ -2596,13 +2627,6 @@ function normalizeDatabase(loaded) {
     messages: Array.isArray(loaded.messages) ? loaded.messages : [],
     activeSessions: Array.isArray(loaded.activeSessions) ? loaded.activeSessions : [],
     auditLogs: Array.isArray(loaded.auditLogs) ? loaded.auditLogs : [],
-    collectionBox: (Array.isArray(loaded.collectionBox) ? loaded.collectionBox : [])
-      .map(normalizeCollectionBoxEntry)
-      .filter(Boolean),
-    publishRecords: (Array.isArray(loaded.publishRecords) ? loaded.publishRecords : [])
-      .map(normalizePublishRecordEntry)
-      .filter(Boolean),
-    pageStoresResetVersion: String(loaded.pageStoresResetVersion || ""),
     publishSettings: normalizePublishSettings(loaded.publishSettings || {}),
     reviewRules: Array.isArray(loaded.reviewRules) ? loaded.reviewRules.map(normalizeReviewRule).filter((item) => item.id) : [],
     productCategoryKnowledge: normalizeProductCategoryKnowledge(loaded.productCategoryKnowledge || {}),

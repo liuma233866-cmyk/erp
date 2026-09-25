@@ -9,6 +9,8 @@ test("declares every table used outside AppState for fresh database deployment",
     "shops",
     "online_products",
     "review_rules",
+    "collection_box",
+    "publish_records",
     "yandex_card_quality_latest",
     "yandex_card_quality_history"
   ]) {
@@ -17,9 +19,21 @@ test("declares every table used outside AppState for fresh database deployment",
 });
 
 test("exposes one executable statement per table without requiring multi-statements", () => {
-  // 5 core tables plus the two Yandex card-quality tables.
-  assert.equal(REQUIRED_TABLE_DDLS.length, 7);
+  // 5 core tables plus the two Yandex card-quality tables plus the two page stores.
+  assert.equal(REQUIRED_TABLE_DDLS.length, 9);
   for (const statement of REQUIRED_TABLE_DDLS) assert.equal(statement.includes(";"), false);
+});
+
+test("采集箱和上架记录各自建表，不共用 AppState 里的老结构", () => {
+  const boxDdl = REQUIRED_TABLE_DDLS.find((statement) => /CREATE TABLE IF NOT EXISTS collection_box/i.test(statement));
+  assert.ok(boxDdl, "collection_box 表要单独建");
+  assert.match(boxDdl, /publishStatus VARCHAR\(32\) NOT NULL DEFAULT 'draft'/i);
+  assert.match(boxDdl, /publishProductId VARCHAR\(128\)/i);
+
+  const recordDdl = REQUIRED_TABLE_DDLS.find((statement) => /CREATE TABLE IF NOT EXISTS publish_records/i.test(statement));
+  assert.ok(recordDdl, "publish_records 表要单独建");
+  assert.match(recordDdl, /result VARCHAR\(16\) NOT NULL DEFAULT 'success'/i);
+  assert.match(recordDdl, /KEY idx_publish_records_ts \(ts\)/i);
 });
 
 test("card-quality tables key one latest row per offer and one history row per day", () => {

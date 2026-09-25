@@ -14,8 +14,6 @@ const { formatAuditWarnings } = require("./log-checker");
 
 const PAGE_STORE_MAX_RECORDS = 5000;
 const BLOCKED_PATTERN = /拦截|已拦|被拦|低于\s*\d+/;
-// 清空历史导入的版本号：跑过一次就不再跑。
-const PAGE_STORE_RESET_VERSION = "1";
 
 function text(value) {
   return String(value ?? "").trim();
@@ -167,6 +165,8 @@ function applyPublishOutcome(db, actor, items, options) {
   const box = listCollectionBox(db);
   const actorUsername = text(actor?.username);
   const shops = Array.isArray(db.shops) ? db.shops : [];
+  const writtenRecords = [];
+  const touchedBoxEntries = [];
   for (const item of list) {
     const productId = text(item?.id);
     const sku = text(item?.platformSku) || text(item?.sku) || text(item?.shopSku);
@@ -176,7 +176,7 @@ function applyPublishOutcome(db, actor, items, options) {
       || text(shops.find((entry) => text(entry?.id) === shopId)?.name);
     const itemResult = resolveItemResult(item, result, options);
     const itemMessage = text(item?.publishResultMessage) || message;
-    appendPublishRecord(records, {
+    const writtenRecord = appendPublishRecord(records, {
       ts,
       actorUsername,
       result: itemResult,
@@ -190,6 +190,7 @@ function applyPublishOutcome(db, actor, items, options) {
       platform: getPlatformLabel(shopId, shops),
       publishStatus: text(item?.publishStatus) || text(item?.lastPublishStatus)
     });
+    if (writtenRecord) writtenRecords.push(writtenRecord);
     const key = collectorKey(item);
     for (const entry of box) {
       const linked = productId && text(entry.publishProductId) === productId;
@@ -199,18 +200,10 @@ function applyPublishOutcome(db, actor, items, options) {
       if (!entry.publishProductId && productId) entry.publishProductId = productId;
       if (!entry.shopId && shopId) entry.shopId = shopId;
       entry.updatedAt = ts;
+      touchedBoxEntries.push(entry);
     }
   }
-  return { recorded: list.length, result };
-}
-
-// 清空旧导入：这两个页面只认自己产生的新数据，历史一律不要。跑一次就记版本。
-function resetOwnedPageStoresOnce(db) {
-  if (text(db.pageStoresResetVersion) === PAGE_STORE_RESET_VERSION) return false;
-  db.collectionBox = [];
-  db.publishRecords = [];
-  db.pageStoresResetVersion = PAGE_STORE_RESET_VERSION;
-  return true;
+  return { recorded: list.length, result, records: writtenRecords, boxEntries: touchedBoxEntries };
 }
 
 module.exports = {
@@ -222,6 +215,5 @@ module.exports = {
   upsertCollectionBoxEntry,
   appendPublishRecord,
   resolvePublishResultGroup,
-  applyPublishOutcome,
-  resetOwnedPageStoresOnce
+  applyPublishOutcome
 };
