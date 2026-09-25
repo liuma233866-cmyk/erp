@@ -16,6 +16,14 @@ function getCollectionBoxStatusClass(group) {
   return "pending";
 }
 
+function getCollectionBoxAiLabel(status) {
+  const key = String(status || "").trim().toLowerCase();
+  if (key === "succeeded" || key === "success" || key === "done") return "已生成";
+  if (key === "queued" || key === "pending" || key === "processing") return "生成中";
+  if (key === "failed" || key === "error") return "生成失败";
+  return status ? String(status) : "未生成";
+}
+
 async function loadCollectionBox() {
   if (!collectionBoxTableBody) return false;
   if (!can("productRead")) {
@@ -74,7 +82,7 @@ function renderCollectionBoxTable() {
   const items = Array.isArray(state.collectionBoxItems) ? state.collectionBoxItems : [];
   const selectedSet = new Set((state.collectionBoxSelectedIds || []).map(String));
   if (!items.length) {
-    collectionBoxTableBody.innerHTML = "<tr><td colspan='7'>暂无采集商品</td></tr>";
+    collectionBoxTableBody.innerHTML = "<tr><td colspan='7'><div class='table-empty'>暂无采集商品</div><div class='table-empty-hint'>采集器投递进来后会自动出现在这里</div></td></tr>";
     syncCollectionBoxSelectionUi();
     return;
   }
@@ -86,15 +94,17 @@ function renderCollectionBoxTable() {
     const sourceUrl = safeExternalUrl(String(item.sourceUrl || ""));
     const sourceLine = [
       item.sourceProductId ? `ID: ${escapeHtml(String(item.sourceProductId))}` : "",
-      sourceUrl ? `<a class="link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">来源链接</a>` : ""
-    ].filter(Boolean).join(" · ");
+      sourceUrl ? `<a class="link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">查看来源 ↗</a>` : ""
+    ].filter(Boolean).join("");
     const imageUrl = String(item.imageUrl || "").trim();
     const statusGroup = String(item.statusGroup || "pending");
+    const collectedText = item.createdAt ? formatDateTime(item.createdAt) : "";
+    const [collectedDate = "-", collectedTime = ""] = collectedText.split(" ");
     return `
       <tr>
         <td><input type="checkbox" data-collection-box-id="${escapeHtml(id)}" ${checked} /></td>
-        <td>${escapeHtml(item.createdAt ? formatDateTime(item.createdAt) : "-")}</td>
-        <td class="collection-source-cell"><strong>${escapeHtml(platformLabel)}</strong><div class="product-sub">${sourceLine || "-"}</div></td>
+        <td><div class="collection-time"><span>${escapeHtml(collectedDate)}</span>${collectedTime ? `<span class="time-part">${escapeHtml(collectedTime)}</span>` : ""}</div></td>
+        <td class="collection-source-cell"><span class="platform-name">${escapeHtml(platformLabel)}</span><div class="product-sub">${sourceLine || "来源信息缺失"}</div></td>
         <td>
           <div class="online-product-info">
             <div class="product-thumb small">
@@ -102,11 +112,11 @@ function renderCollectionBoxTable() {
             </div>
             <div class="product-info">
               <div class="product-title clamp-2">${escapeHtml(item.title || "-")}</div>
-              <div class="product-sub"><div>SKU: ${escapeHtml(item.sku || "-")}</div></div>
+              <div class="product-sub">SKU: ${escapeHtml(item.sku || "-")}</div>
             </div>
           </div>
         </td>
-        <td>${escapeHtml(item.aiImageStatus || "-")}</td>
+        <td><span class="collection-ai">${escapeHtml(getCollectionBoxAiLabel(item.aiImageStatus))}</span></td>
         <td><span class="collection-status ${getCollectionBoxStatusClass(statusGroup)}">${escapeHtml(getCollectionBoxStatusLabel(statusGroup))}</span></td>
         <td><button type="button" class="link-btn" data-collection-box-publish="${escapeHtml(id)}">去刊登</button></td>
       </tr>

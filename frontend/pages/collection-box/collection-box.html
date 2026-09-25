@@ -11,13 +11,13 @@
               </div>
             </div>
             <div class="online-summary-grid" style="margin-bottom:14px;">
-              <article class="online-summary-card"><span>采集总数</span><strong id="collectionBoxTotal">0</strong></article>
-              <article class="online-summary-card"><span>待刊登</span><strong id="collectionBoxPending">0</strong></article>
-              <article class="online-summary-card"><span>已刊登</span><strong id="collectionBoxPublished">0</strong></article>
-              <article class="online-summary-card"><span>失败</span><strong id="collectionBoxFailed">0</strong></article>
+              <article class="online-summary-card is-total"><span>采集总数</span><strong id="collectionBoxTotal">0</strong></article>
+              <article class="online-summary-card is-pending"><span>待刊登</span><strong id="collectionBoxPending">0</strong></article>
+              <article class="online-summary-card is-published"><span>已刊登</span><strong id="collectionBoxPublished">0</strong></article>
+              <article class="online-summary-card is-failed"><span>失败</span><strong id="collectionBoxFailed">0</strong></article>
             </div>
             <form id="collectionBoxFilterForm" class="filter-form">
-              <input name="keyword" type="text" placeholder="标题 / SKU / 来源商品ID" aria-label="关键词" />
+              <input name="keyword" type="text" placeholder="标题 / SKU / 来源ID" aria-label="关键词" />
               <select name="sourcePlatform" aria-label="来源平台">
                 <option value="">来源平台(全部)</option>
                 <option value="ozon">Ozon</option>
@@ -34,7 +34,16 @@
             </form>
             <p id="collectionBoxMessage" class="message small"></p>
             <div class="table-wrap online-products-table catalog-table-shell">
-              <table>
+              <table class="collection-box-table">
+                <colgroup>
+                  <col class="col-check" />
+                  <col class="col-time" />
+                  <col class="col-source" />
+                  <col class="col-product" />
+                  <col class="col-ai" />
+                  <col class="col-status" />
+                  <col class="col-action" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th><input id="collectionBoxSelectAll" type="checkbox" aria-label="全选当前页" /></th>

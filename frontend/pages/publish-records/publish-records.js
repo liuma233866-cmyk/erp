@@ -67,18 +67,19 @@ function renderPublishRecordsTable() {
   if (!publishRecordsTableBody) return;
   const records = Array.isArray(state.publishRecords) ? state.publishRecords : [];
   if (!records.length) {
-    publishRecordsTableBody.innerHTML = "<tr><td colspan='8'>暂无上架记录</td></tr>";
+    publishRecordsTableBody.innerHTML = "<tr><td colspan='8'><div class='table-empty'>暂无上架记录</div><div class='table-empty-hint'>在刊登工作台点刊登后会自动记录在这里</div></td></tr>";
     return;
   }
   publishRecordsTableBody.innerHTML = records.map((record) => {
     const meta = getPublishRecordResultMeta(record);
+    const [recordDate = "-", recordTime = ""] = String(record.ts ? formatDateTime(record.ts) : "").split(" ");
     return `
       <tr>
-        <td>${escapeHtml(record.ts ? formatDateTime(record.ts) : "-")}</td>
-        <td>${escapeHtml(record.shopName || record.shopId || "-")}</td>
+        <td><div class="record-time"><span>${escapeHtml(record.ts ? recordDate : "-")}</span>${recordTime ? `<span class="time-part">${escapeHtml(recordTime)}</span>` : ""}</div></td>
+        <td><span class="record-strong">${escapeHtml(record.shopName || record.shopId || "-")}</span></td>
         <td>${escapeHtml(record.platform || "-")}</td>
-        <td>${escapeHtml(record.sku || "-")}</td>
-        <td>${escapeHtml(record.title || "-")}</td>
+        <td><span class="record-strong">${escapeHtml(record.sku || "-")}</span></td>
+        <td><div class="record-title">${escapeHtml(record.title || "-")}</div></td>
         <td><span class="publish-record-result ${meta.key}">${meta.label}</span></td>
         <td>${escapeHtml(record.actorUsername || "-")}</td>
         <td class="publish-record-message">${escapeHtml(record.message || "-")}</td>

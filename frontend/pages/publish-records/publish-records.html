@@ -10,11 +10,11 @@
               </div>
             </div>
             <div class="online-summary-grid" style="margin-bottom:14px;">
-              <article class="online-summary-card"><span>上架记录</span><strong id="publishRecordsTotal">0</strong></article>
-              <article class="online-summary-card"><span>成功</span><strong id="publishRecordsSuccess">0</strong></article>
-              <article class="online-summary-card"><span>已拦截</span><strong id="publishRecordsBlocked">0</strong></article>
-              <article class="online-summary-card"><span>处理中</span><strong id="publishRecordsPending">0</strong></article>
-              <article class="online-summary-card"><span>失败</span><strong id="publishRecordsFailed">0</strong></article>
+              <article class="online-summary-card is-total"><span>上架记录</span><strong id="publishRecordsTotal">0</strong></article>
+              <article class="online-summary-card is-published"><span>成功</span><strong id="publishRecordsSuccess">0</strong></article>
+              <article class="online-summary-card is-blocked"><span>已拦截</span><strong id="publishRecordsBlocked">0</strong></article>
+              <article class="online-summary-card is-pending"><span>处理中</span><strong id="publishRecordsPending">0</strong></article>
+              <article class="online-summary-card is-failed"><span>失败</span><strong id="publishRecordsFailed">0</strong></article>
             </div>
             <form id="publishRecordsFilterForm" class="filter-form">
               <input name="keyword" type="text" placeholder="SKU / 标题 / 操作者 / 店铺" aria-label="关键词" />
@@ -30,7 +30,17 @@
             </form>
             <p id="publishRecordsMessage" class="message small"></p>
             <div class="table-wrap">
-              <table>
+              <table class="publish-records-table">
+                <colgroup>
+                  <col class="col-time" />
+                  <col class="col-shop" />
+                  <col class="col-platform" />
+                  <col class="col-sku" />
+                  <col class="col-title" />
+                  <col class="col-result" />
+                  <col class="col-actor" />
+                  <col class="col-message" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>时间</th>

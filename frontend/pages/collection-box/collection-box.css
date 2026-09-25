@@ -1,33 +1,318 @@
-/* collection-box 页面专属样式：采集箱状态标签与来源列。 */
-.collection-source-cell {
-  min-width: 160px;
+/* collection-box 页面样式：采集箱（页面内自成一套，不影响别的页面）。 */
+
+/* ---------- 头部 ---------- */
+#collectionBoxPanel .panel-head {
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e8eef9;
+  margin-bottom: 16px;
 }
-.collection-source-cell .product-sub {
+#collectionBoxPanel .catalog-head-copy {
+  gap: 6px;
+}
+#collectionBoxPanel .catalog-head-eyebrow {
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eaf1ff;
+  border: 1px solid #cfe0fb;
+  color: #2f67c8;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+#collectionBoxPanel .catalog-head-subtle {
+  max-width: 640px;
+  color: #6b7c93;
+  font-size: 13px;
+  line-height: 1.6;
+}
+#collectionBoxPanel .head-actions {
+  align-items: center;
+  padding-top: 2px;
+}
+
+/* ---------- 汇总卡片 ---------- */
+#collectionBoxPanel .online-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+#collectionBoxPanel .online-summary-card {
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fbff;
+  border: 1px solid #e3ebf9;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+#collectionBoxPanel .online-summary-card span {
+  font-size: 12px;
+  color: #6b7c93;
+}
+#collectionBoxPanel .online-summary-card strong {
+  font-size: 22px;
+  line-height: 1.2;
+  color: #1f2b3b;
+}
+#collectionBoxPanel .online-summary-card.is-pending {
+  background: #fffaf0;
+  border-color: #f4e3c2;
+}
+#collectionBoxPanel .online-summary-card.is-pending strong {
+  color: #b7791f;
+}
+#collectionBoxPanel .online-summary-card.is-published {
+  background: #f4fbf6;
+  border-color: #d6ecdf;
+}
+#collectionBoxPanel .online-summary-card.is-published strong {
+  color: #12663a;
+}
+#collectionBoxPanel .online-summary-card.is-failed {
+  background: #fff7f8;
+  border-color: #f6d9dd;
+}
+#collectionBoxPanel .online-summary-card.is-failed strong {
+  color: #b0202f;
+}
+
+/* ---------- 筛选栏 ---------- */
+#collectionBoxPanel .filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e3ebf9;
+  border-radius: 14px;
+  background: #f8fbff;
+  margin-bottom: 10px;
+}
+#collectionBoxPanel .filter-form input,
+#collectionBoxPanel .filter-form select {
+  width: auto;
+  height: 34px;
+  border: 1px solid #d3dff0;
+  border-radius: 10px;
+  background: #fff;
+  color: #2f4663;
+}
+#collectionBoxPanel .filter-form input[name="keyword"] {
+  flex: 1 1 240px;
+  min-width: 180px;
+  max-width: 380px;
+}
+#collectionBoxPanel .filter-form select {
+  flex: 0 0 auto;
+  min-width: 140px;
+}
+#collectionBoxPanel .filter-form button {
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 10px;
+}
+
+/* ---------- 表格 ---------- */
+#collectionBoxPanel .catalog-table-shell {
+  border-radius: 16px;
+}
+#collectionBoxPanel .collection-box-table {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#collectionBoxPanel .collection-box-table .col-check {
+  width: 46px;
+}
+#collectionBoxPanel .collection-box-table .col-time {
+  width: 122px;
+}
+#collectionBoxPanel .collection-box-table .col-source {
+  width: 176px;
+}
+#collectionBoxPanel .collection-box-table .col-ai {
+  width: 92px;
+}
+#collectionBoxPanel .collection-box-table .col-status {
+  width: 104px;
+}
+#collectionBoxPanel .collection-box-table .col-action {
+  width: 92px;
+}
+#collectionBoxPanel .collection-box-table th,
+#collectionBoxPanel .collection-box-table td {
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+#collectionBoxPanel .collection-box-table th {
+  font-size: 13px;
+  color: #3a5578;
+  white-space: nowrap;
+}
+#collectionBoxPanel .collection-box-table td {
+  font-size: 13px;
+}
+
+/* 采集时间：日期一行、时间一行 */
+#collectionBoxPanel .collection-time {
   display: grid;
   gap: 2px;
+  color: #4a5f7d;
+  font-variant-numeric: tabular-nums;
+}
+#collectionBoxPanel .collection-time .time-part {
+  color: #8595ac;
   font-size: 12px;
 }
-.collection-status {
+
+/* 商品列：缩略图 + 标题 + SKU */
+#collectionBoxPanel .collection-box-table .online-product-info {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+#collectionBoxPanel .collection-box-table .product-thumb.small {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid #e1e9f6;
+  background: #f4f7ff;
+}
+#collectionBoxPanel .collection-box-table .thumb-placeholder {
+  font-size: 10px;
+  color: #93a4bd;
+}
+#collectionBoxPanel .collection-box-table .product-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+#collectionBoxPanel .collection-box-table .product-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f324c;
+  line-height: 1.45;
+}
+#collectionBoxPanel .collection-box-table .product-sub {
+  font-size: 12px;
+  color: #7b8ba3;
+  word-break: break-all;
+}
+
+/* 来源列 */
+#collectionBoxPanel .collection-source-cell {
+  min-width: 0;
+}
+#collectionBoxPanel .collection-source-cell .platform-name {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 56px;
-  padding: 2px 10px;
+  padding: 1px 8px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  color: #2159a8;
+  background: rgba(47, 103, 200, 0.1);
+}
+#collectionBoxPanel .collection-source-cell .product-sub {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #8595ac;
+  word-break: break-all;
+}
+#collectionBoxPanel .collection-source-cell .link {
+  color: #2b62b8;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+#collectionBoxPanel .collection-source-cell .link:hover {
+  text-decoration: underline;
+}
+
+/* 状态与 AI 图 */
+#collectionBoxPanel .collection-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
   color: #5b6479;
   background: #eef2f8;
 }
-.collection-status.pending {
+#collectionBoxPanel .collection-status.pending {
   color: #8a5a00;
   background: #fdf0d3;
 }
-.collection-status.published {
+#collectionBoxPanel .collection-status.published {
   color: #12663a;
   background: #e3f5eb;
 }
-.collection-status.failed {
+#collectionBoxPanel .collection-status.failed {
   color: #b0202f;
   background: #fde7e9;
+}
+#collectionBoxPanel .collection-ai {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #4a5f7d;
+  background: #f1f5fc;
+  border: 1px solid #e2eaf7;
+  white-space: nowrap;
+}
+
+/* 操作列 */
+#collectionBoxPanel .collection-box-table .link-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid #c7d8f2;
+  background: #f2f7ff;
+  color: #2159a8;
+  font-size: 12px;
+  font-weight: 600;
+}
+#collectionBoxPanel .collection-box-table .link-btn:hover {
+  background: #e6efff;
+  border-color: #adc6ea;
+}
+
+/* 空状态 */
+#collectionBoxPanel .collection-box-table td[colspan] {
+  padding: 40px 12px;
+  text-align: center;
+}
+#collectionBoxPanel .table-empty {
+  color: #8496b0;
+  font-size: 14px;
+  font-weight: 600;
+}
+#collectionBoxPanel .table-empty-hint {
+  margin-top: 6px;
+  color: #a3b1c6;
+  font-size: 12px;
+}
+
+/* 分页 */
+#collectionBoxPanel .pagination-row {
+  margin-top: 12px;
+  align-items: center;
+}
+#collectionBoxPanel .pagination-row button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 9px;
+}
+#collectionBoxPanel .pagination-row span {
+  color: #6b7c93;
+  font-size: 13px;
 }
