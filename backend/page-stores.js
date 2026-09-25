@@ -6,16 +6,16 @@
 // - 上架记录（db.publishRecords）：上架动作发生时写下的记录快照，带上当时的
 //   SKU/标题/店铺/平台，不读审计日志，也不依赖刊登池里商品是否还在。
 //
-// 历史数据只在升级时一次性导入（见 seedOwnedPageStoresOnce），之后两个页面
-// 的数据由自己产生、只被自己读取。
+// 这两个页面从零开始：不导入任何历史数据（刊登池、审计日志一律不搬），
+// 只有「新的采集投递」和「新的上架动作」才会产生记录。
 
 const { makeId } = require("./identity");
 const { formatAuditWarnings } = require("./log-checker");
 
 const PAGE_STORE_MAX_RECORDS = 5000;
 const BLOCKED_PATTERN = /拦截|已拦|被拦|低于\s*\d+/;
-// 采集箱历史导入的版本号：改导入口径时把它 +1，启动时会自动补齐缺失的条目。
-const COLLECTION_BOX_SEED_VERSION = "2";
+// 清空历史导入的版本号：跑过一次就不再跑。
+const PAGE_STORE_RESET_VERSION = "1";
 
 function text(value) {
   return String(value ?? "").trim();
@@ -28,14 +28,6 @@ function collectorKey(item) {
   const sourceId = text(item?.sourceProductId) || text(item?.sku);
   const shopId = text(item?.shopId);
   return `${platform}::${sourceId}::${shopId}`;
-}
-
-// 只有浏览器扩展/采集器送进来的条目才算采集箱的。
-function isCollectorSourced(item) {
-  const source = text(item?.source).toLowerCase();
-  if (source.includes("collector")) return true;
-  if (source === "browser_extension" || source === "collector_extension") return true;
-  return Boolean(text(item?.collectBatchId));
 }
 
 function normalizeCollectionBoxEntry(raw) {
@@ -212,93 +204,17 @@ function applyPublishOutcome(db, actor, items, options) {
   return { recorded: list.length, result };
 }
 
-// 一次性导入：现有采集条目搬进采集箱自己的表。版本号变了会再跑一次，
-// 只补缺失的条目，已经搬过的不动。
-function seedCollectionBoxOnce(db) {
-  if (text(db.collectionBoxSeededAt) && text(db.collectionBoxSeedVersion) === COLLECTION_BOX_SEED_VERSION) return 0;
-  const products = Array.isArray(db.publishProducts) ? db.publishProducts : [];
-  const box = listCollectionBox(db);
-  let added = 0;
-  for (const item of products) {
-    if (!isCollectorSourced(item)) continue;
-    if (box.some((entry) => collectorKey(entry) === collectorKey(item))) continue;
-    const entry = upsertCollectionBoxEntry(box, {
-      source: item.source,
-      sourcePlatform: item.sourcePlatform,
-      sourceProductId: item.sourceProductId,
-      sourceUrl: item.sourceUrl || item.collectUrl,
-      collectBatchId: item.collectBatchId,
-      title: item.title || item.name,
-      sku: item.sku || item.shopSku,
-      imageUrl: item.imageUrl,
-      aiImageStatus: item.aiImageStatus,
-      publishStatus: item.publishStatus || item.lastPublishStatus || "draft",
-      publishMessage: item.publishResultMessage,
-      publishProductId: item.id,
-      shopId: item.shopId,
-      collectedAt: item.collectedAt || item.createdAt,
-      createdAt: item.createdAt
-    });
-    if (entry) added += 1;
-  }
-  db.collectionBoxSeededAt = new Date().toISOString();
-  db.collectionBoxSeedVersion = COLLECTION_BOX_SEED_VERSION;
-  return added;
-}
-
-// 一次性导入：历史上架动作搬进上架记录自己的表（含当时的结果与商品信息）。
-function seedPublishRecordsOnce(db) {
-  if (text(db.publishRecordsSeededAt)) return 0;
-  const logs = Array.isArray(db.auditLogs) ? db.auditLogs : [];
-  const productsById = new Map(
-    (Array.isArray(db.publishProducts) ? db.publishProducts : []).map((item) => [text(item?.id), item])
-  );
-  const records = listPublishRecords(db);
-  const seen = new Set(records.map((entry) => text(entry?.id)));
-  let added = 0;
-  for (const log of logs) {
-    if (text(log?.resourceType) !== "product_publish") continue;
-    if (text(log?.actionType) !== "publish") continue;
-    const productId = text(log?.resourceId);
-    if (!productId) continue;
-    const auditId = text(log?.id);
-    if (auditId && seen.has(auditId)) continue;
-    const product = productsById.get(productId);
-    const message = text(log?.errorMessage) || text(log?.warningMessage);
-    const result = resolvePublishResultGroup({ success: log?.success !== false, statusCode: log?.statusCode, message });
-    const shopId = text(product?.shopId);
-    const shop = (Array.isArray(db.shops) ? db.shops : []).find((entry) => text(entry?.id) === shopId);
-    appendPublishRecord(records, {
-      ts: log?.ts,
-      actorUsername: log?.actorUsername,
-      result,
-      statusCode: log?.statusCode,
-      message,
-      productId,
-      sku: product?.sku || product?.shopSku || log?.requestBodyMasked?.sku,
-      title: product?.title || log?.requestBodyMasked?.title,
-      shopId,
-      shopName: product?.shopName || shop?.name,
-      platform: getPlatformLabel(shopId, db.shops),
-      publishStatus: product?.publishStatus || product?.lastPublishStatus
-    });
-    if (auditId) seen.add(auditId);
-    added += 1;
-  }
-  db.publishRecordsSeededAt = new Date().toISOString();
-  return added;
-}
-
-// 升级时跑一次：两个页面的历史数据各归各表。返回是否有改动需要落库。
-function seedOwnedPageStoresOnce(db) {
-  const collectionBoxAdded = seedCollectionBoxOnce(db);
-  const publishRecordsAdded = seedPublishRecordsOnce(db);
-  return { collectionBoxAdded, publishRecordsAdded, changed: Boolean(collectionBoxAdded || publishRecordsAdded) };
+// 清空旧导入：这两个页面只认自己产生的新数据，历史一律不要。跑一次就记版本。
+function resetOwnedPageStoresOnce(db) {
+  if (text(db.pageStoresResetVersion) === PAGE_STORE_RESET_VERSION) return false;
+  db.collectionBox = [];
+  db.publishRecords = [];
+  db.pageStoresResetVersion = PAGE_STORE_RESET_VERSION;
+  return true;
 }
 
 module.exports = {
   collectorKey,
-  isCollectorSourced,
   normalizeCollectionBoxEntry,
   normalizePublishRecordEntry,
   listCollectionBox,
@@ -307,5 +223,5 @@ module.exports = {
   appendPublishRecord,
   resolvePublishResultGroup,
   applyPublishOutcome,
-  seedOwnedPageStoresOnce
+  resetOwnedPageStoresOnce
 };

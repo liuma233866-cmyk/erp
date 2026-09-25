@@ -43,7 +43,7 @@ const { filterAuditLogs, filterOrders, hasFilterQuery } = require("./order-filte
 const { YANDEX_LEGAL_RATE_URL_RU, YANDEX_LEGAL_RATE_URL_ZH, normalizeProductCategoryKnowledge, normalizeYandexCommissionCatalog } = require("./catalog-normalize");;
 const { fetchAllYandexOfferCards, fetchYandexCampaign, fetchYandexCategoryIndex, fetchYandexDeliveryServices, fetchYandexOfferCards, fetchYandexOfferMappings, fetchYandexOfferMappingsPaged, fetchYandexOrderDetail, fetchYandexOrderLabels, fetchYandexOrders } = require("./yandex-fetch");;
 const { buildLogCheckerReport, extractFreshLogEntries, formatAuditWarnings, readRecentLocalErrorTail, sanitizeAuditLogForClient, sanitizeProductPublishAuditPayload } = require("./log-checker");;
-const { upsertCollectionBoxEntry, applyPublishOutcome, listCollectionBox, listPublishRecords, seedOwnedPageStoresOnce, normalizeCollectionBoxEntry, normalizePublishRecordEntry } = require("./page-stores");;
+const { upsertCollectionBoxEntry, applyPublishOutcome, listCollectionBox, listPublishRecords, resetOwnedPageStoresOnce, normalizeCollectionBoxEntry, normalizePublishRecordEntry } = require("./page-stores");;
 const { createAuthService } = require("./auth-service");;
 const { createSqlWriters, ORDER_PURCHASE_FIELDS } = require("./sql-persistence");;
 const { createRatesRoutes } = require("./routes/rates");;
@@ -890,13 +890,12 @@ const server = http.createServer(handleRequest);
 async function initializeAppRuntime(options = {}) {
   db = options.database || createRuntimeDatabase();
   await initSqlPersistence();
-  // 采集箱 / 上架记录 的历史数据各归各表：只在升级后的第一次启动搬一次，
-  // 之后两个页面的数据由各自的数据流维护，互不接入。
+  // 采集箱 / 上架记录 重新开始：旧数据一律清掉，不导入任何历史，
+  // 之后只记录各自产生的新数据。跑一次记版本。
   try {
-    const pageStoreSeed = seedOwnedPageStoresOnce(db);
-    if (pageStoreSeed.changed) await saveDatabase();
+    if (resetOwnedPageStoresOnce(db)) await saveDatabase();
   } catch (error) {
-    logError(`Seeding collection box / publish records failed: ${String(error)}`);
+    logError(`Resetting collection box / publish records failed: ${String(error)}`);
   }
   rotateInsecureDefaultAdmins(db);
   await aiConfigModule.initialize();
@@ -2541,9 +2540,7 @@ function createDefaultDatabase() {
     // 采集箱 / 上架记录 各自的独立数据（不与其他模块互通，见 page-stores.js）。
     collectionBox: [],
     publishRecords: [],
-    collectionBoxSeededAt: "",
-    collectionBoxSeedVersion: "",
-    publishRecordsSeededAt: "",
+    pageStoresResetVersion: "",
     publishSettings: normalizePublishSettings({}),
     reviewRules: [],
     productCategoryKnowledge: normalizeProductCategoryKnowledge({}),
@@ -2605,9 +2602,7 @@ function normalizeDatabase(loaded) {
     publishRecords: (Array.isArray(loaded.publishRecords) ? loaded.publishRecords : [])
       .map(normalizePublishRecordEntry)
       .filter(Boolean),
-    collectionBoxSeededAt: String(loaded.collectionBoxSeededAt || ""),
-    collectionBoxSeedVersion: String(loaded.collectionBoxSeedVersion || ""),
-    publishRecordsSeededAt: String(loaded.publishRecordsSeededAt || ""),
+    pageStoresResetVersion: String(loaded.pageStoresResetVersion || ""),
     publishSettings: normalizePublishSettings(loaded.publishSettings || {}),
     reviewRules: Array.isArray(loaded.reviewRules) ? loaded.reviewRules.map(normalizeReviewRule).filter((item) => item.id) : [],
     productCategoryKnowledge: normalizeProductCategoryKnowledge(loaded.productCategoryKnowledge || {}),

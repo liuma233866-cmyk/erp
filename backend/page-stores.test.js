@@ -7,7 +7,7 @@ const {
   appendPublishRecord,
   applyPublishOutcome,
   collectorKey,
-  seedOwnedPageStoresOnce
+  resetOwnedPageStoresOnce
 } = require("./page-stores");
 
 test("采集器同一条商品重复投递只更新采集箱里的同一条", () => {
@@ -105,54 +105,31 @@ test("上架记录写到 5000 条封顶，不会无限增长", () => {
   assert.equal(records[0].sku, "SKU-5009");
 });
 
-test("历史数据只导入一次，第二次启动不会重复搬", () => {
-  const db = {
-    shops: [{ id: "SHP-1", name: "Yandex 主店", provider: "yandex_market" }],
-    publishProducts: [
-      { id: "PUB-1", source: "ozon-yandex-collector-v2", sku: "SKU-1", title: "采集商品", shopId: "SHP-1", shopName: "Yandex 主店", publishStatus: "success" },
-      { id: "PUB-3", source: "ozon-yandex-collector-v2", sku: "SKU-1", title: "同款卖到另一家店", shopId: "SHP-2", publishStatus: "success" },
-      { id: "PUB-2", source: "yandex_online_product", sku: "SKU-2", title: "复制商品" }
-    ],
-    auditLogs: [
-      { id: "AUD-1", ts: "2026-09-20T10:00:00.000Z", resourceType: "product_publish", actionType: "publish", resourceId: "PUB-1", statusCode: 200, success: true, actorUsername: "admin2" },
-      { id: "AUD-2", ts: "2026-09-20T10:00:00.000Z", resourceType: "product_publish", actionType: "publish", resourceId: "", statusCode: 200, success: true },
-      { id: "AUD-3", ts: "2026-09-20T09:00:00.000Z", resourceType: "product_publish", actionType: "copy", resourceId: "PUB-1", statusCode: 200, success: true }
-    ],
-    collectionBox: [],
-    publishRecords: []
-  };
-
-  const first = seedOwnedPageStoresOnce(db);
-  assert.equal(first.collectionBoxAdded, 2);
-  assert.equal(first.publishRecordsAdded, 1);
-  assert.equal(db.collectionBox.length, 2);
-  assert.deepEqual(db.collectionBox.map((entry) => entry.publishProductId).sort(), ["PUB-1", "PUB-3"]);
-  assert.equal(db.publishRecords.length, 1);
-  assert.equal(db.publishRecords[0].sku, "SKU-1");
-
-  const second = seedOwnedPageStoresOnce(db);
-  assert.equal(second.changed, false);
-  assert.equal(db.collectionBox.length, 2);
-  assert.equal(db.publishRecords.length, 1);
-});
-
-test("导入版本号升级时只补缺失的采集条目", () => {
+test("启动时清掉历史数据，之后不再重复清", () => {
   const db = {
     shops: [],
     publishProducts: [
-      { id: "PUB-1", source: "erp-chrome-collector-v1", sku: "SKU-1", shopId: "SHP-1" },
-      { id: "PUB-2", source: "erp-chrome-collector-v1", sku: "SKU-2", shopId: "SHP-2" }
+      { id: "PUB-1", source: "ozon-yandex-collector-v2", sku: "SKU-1", title: "老的采集商品" },
+      { id: "PUB-2", source: "yandex_online_product", sku: "SKU-2", title: "老的复制商品" }
     ],
-    auditLogs: [],
-    collectionBox: [{ id: "CB-1", sourcePlatform: "", sourceProductId: "SKU-1", sku: "SKU-1", shopId: "SHP-1", publishProductId: "PUB-1" }],
-    publishRecords: [],
-    collectionBoxSeededAt: "2026-09-25T00:00:00.000Z",
-    collectionBoxSeedVersion: "1"
+    auditLogs: [
+      { id: "AUD-1", ts: "2026-09-20T10:00:00.000Z", resourceType: "product_publish", actionType: "publish", resourceId: "PUB-1", statusCode: 200, success: true }
+    ],
+    collectionBox: [{ id: "CB-1", sourcePlatform: "ozon", sourceProductId: "SKU-1", title: "之前导入的采集条目" }],
+    publishRecords: [{ id: "PR-1", ts: "2026-09-20T10:00:00.000Z", result: "success", sku: "SKU-1" }]
   };
 
-  const result = seedOwnedPageStoresOnce(db);
-  assert.equal(result.collectionBoxAdded, 1);
-  assert.equal(db.collectionBox.length, 2);
-  assert.equal(db.collectionBox.find((entry) => entry.publishProductId === "PUB-2").sku, "SKU-2");
-  assert.equal(seedOwnedPageStoresOnce(db).changed, false);
+  assert.equal(resetOwnedPageStoresOnce(db), true);
+  assert.equal(db.collectionBox.length, 0);
+  assert.equal(db.publishRecords.length, 0);
+  assert.equal(db.publishProducts.length, 2, "刊登工作台的数据不受影响");
+  assert.equal(db.auditLogs.length, 1, "审计日志不受影响");
+
+  const later = {
+    collectionBox: [{ id: "CB-2", sourcePlatform: "ozon", sourceProductId: "SKU-9", title: "新采集的" }],
+    publishRecords: [],
+    pageStoresResetVersion: db.pageStoresResetVersion
+  };
+  assert.equal(resetOwnedPageStoresOnce(later), false);
+  assert.equal(later.collectionBox.length, 1, "新产生的数据不会被清");
 });
