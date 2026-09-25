@@ -53,6 +53,41 @@ function renderPublishRecordsSummary(summary) {
   if (publishRecordsBlocked) publishRecordsBlocked.textContent = String(Number(data.blocked || 0) || 0);
   if (publishRecordsPending) publishRecordsPending.textContent = String(Number(data.pending || 0) || 0);
   if (publishRecordsFailed) publishRecordsFailed.textContent = String(Number(data.failed || 0) || 0);
+  syncPublishRecordsStatusTabs();
+}
+
+// 汇总卡片同时是结果筛选：点哪张卡就只看哪一类，点「上架记录」回到全部。
+function syncPublishRecordsStatusTabs() {
+  const current = String(getPublishRecordsFilters().status || "");
+  document.querySelectorAll("#publishRecordsPanel [data-publish-status]").forEach((card) => {
+    card.classList.toggle("is-active", String(card.dataset.publishStatus || "") === current);
+    card.setAttribute("aria-pressed", String(card.dataset.publishStatus || "") === current ? "true" : "false");
+  });
+}
+
+function onPublishRecordsSummaryClick(event) {
+  const card = event.target.closest("[data-publish-status]");
+  if (!card) return;
+  applyPublishRecordsStatusFilter(String(card.dataset.publishStatus || ""));
+}
+
+function onPublishRecordsSummaryKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const card = event.target.closest("[data-publish-status]");
+  if (!card) return;
+  event.preventDefault();
+  applyPublishRecordsStatusFilter(String(card.dataset.publishStatus || ""));
+}
+
+function applyPublishRecordsStatusFilter(status) {
+  state.publishRecordsFilters = { ...getPublishRecordsFilters(), status };
+  if (publishRecordsFilterForm) {
+    const select = publishRecordsFilterForm.querySelector('[name="status"]');
+    if (select) select.value = status;
+  }
+  state.publishRecordsPage = 1;
+  syncPublishRecordsStatusTabs();
+  loadPublishRecords();
 }
 
 function getPublishRecordResultMeta(record) {
@@ -144,6 +179,10 @@ const publishRecordsPaginationInfo = document.getElementById("publishRecordsPagi
 
 function bindPublishRecordsEvents() {
   if (publishRecordsFilterForm) publishRecordsFilterForm.addEventListener("submit", onPublishRecordsFilterSubmit);
+  document.querySelectorAll("#publishRecordsPanel [data-publish-status]").forEach((card) => {
+    card.addEventListener("click", onPublishRecordsSummaryClick);
+    card.addEventListener("keydown", onPublishRecordsSummaryKeydown);
+  });
   if (resetPublishRecordsFilterBtn) resetPublishRecordsFilterBtn.addEventListener("click", onPublishRecordsFilterReset);
   if (refreshPublishRecordsBtn) refreshPublishRecordsBtn.addEventListener("click", () => loadPublishRecords());
   if (publishRecordsPrevPageBtn) publishRecordsPrevPageBtn.addEventListener("click", () => changePublishRecordsPage((state.publishRecordsPage || 1) - 1));

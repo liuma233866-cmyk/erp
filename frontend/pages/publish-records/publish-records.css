@@ -44,6 +44,25 @@
   background: #f8fbff;
   border: 1px solid #e3ebf9;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+#publishRecordsPanel .online-summary-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(31, 52, 88, 0.08);
+}
+#publishRecordsPanel .online-summary-card:focus-visible {
+  outline: 2px solid #2f67c8;
+  outline-offset: 2px;
+}
+#publishRecordsPanel .online-summary-card.is-active {
+  border-color: #2f67c8;
+  box-shadow: 0 0 0 2px rgba(47, 103, 200, 0.16), 0 10px 22px rgba(31, 52, 88, 0.1);
+}
+#publishRecordsPanel .online-summary-card.is-active span {
+  color: #2159a8;
+  font-weight: 700;
 }
 #publishRecordsPanel .online-summary-card span {
   font-size: 12px;

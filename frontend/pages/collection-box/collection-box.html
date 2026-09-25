@@ -10,10 +10,10 @@
               </div>
             </div>
             <div class="online-summary-grid" style="margin-bottom:14px;">
-              <article class="online-summary-card is-total"><span>采集总数</span><strong id="collectionBoxTotal">0</strong></article>
-              <article class="online-summary-card is-pending"><span>待刊登</span><strong id="collectionBoxPending">0</strong></article>
-              <article class="online-summary-card is-published"><span>已刊登</span><strong id="collectionBoxPublished">0</strong></article>
-              <article class="online-summary-card is-failed"><span>失败</span><strong id="collectionBoxFailed">0</strong></article>
+              <article class="online-summary-card is-total" role="button" tabindex="0" data-collection-status="" title="点击显示全部采集条目"><span>采集总数</span><strong id="collectionBoxTotal">0</strong></article>
+              <article class="online-summary-card is-pending" role="button" tabindex="0" data-collection-status="pending" title="点击只看待刊登"><span>待刊登</span><strong id="collectionBoxPending">0</strong></article>
+              <article class="online-summary-card is-published" role="button" tabindex="0" data-collection-status="published" title="点击只看已刊登"><span>已刊登</span><strong id="collectionBoxPublished">0</strong></article>
+              <article class="online-summary-card is-failed" role="button" tabindex="0" data-collection-status="failed" title="点击只看失败"><span>失败</span><strong id="collectionBoxFailed">0</strong></article>
             </div>
             <form id="collectionBoxFilterForm" class="filter-form">
               <input name="keyword" type="text" placeholder="标题 / SKU / 来源ID" aria-label="关键词" />

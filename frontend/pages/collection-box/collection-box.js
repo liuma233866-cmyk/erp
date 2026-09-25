@@ -75,6 +75,41 @@ function renderCollectionBoxSummary(summary) {
   if (collectionBoxPending) collectionBoxPending.textContent = String(Number(data.pending || 0) || 0);
   if (collectionBoxPublished) collectionBoxPublished.textContent = String(Number(data.published || 0) || 0);
   if (collectionBoxFailed) collectionBoxFailed.textContent = String(Number(data.failed || 0) || 0);
+  syncCollectionBoxStatusTabs();
+}
+
+// 汇总卡片同时是状态筛选：点哪张卡就只看哪一类，点「采集总数」回到全部。
+function syncCollectionBoxStatusTabs() {
+  const current = String(getCollectionBoxFilters().status || "");
+  document.querySelectorAll("#collectionBoxPanel [data-collection-status]").forEach((card) => {
+    card.classList.toggle("is-active", String(card.dataset.collectionStatus || "") === current);
+    card.setAttribute("aria-pressed", String(card.dataset.collectionStatus || "") === current ? "true" : "false");
+  });
+}
+
+function onCollectionBoxSummaryClick(event) {
+  const card = event.target.closest("[data-collection-status]");
+  if (!card) return;
+  applyCollectionBoxStatusFilter(String(card.dataset.collectionStatus || ""));
+}
+
+function onCollectionBoxSummaryKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const card = event.target.closest("[data-collection-status]");
+  if (!card) return;
+  event.preventDefault();
+  applyCollectionBoxStatusFilter(String(card.dataset.collectionStatus || ""));
+}
+
+function applyCollectionBoxStatusFilter(status) {
+  state.collectionBoxFilters = { ...getCollectionBoxFilters(), status };
+  if (collectionBoxFilterForm) {
+    const select = collectionBoxFilterForm.querySelector('[name="status"]');
+    if (select) select.value = status;
+  }
+  state.collectionBoxPage = 1;
+  syncCollectionBoxStatusTabs();
+  loadCollectionBox();
 }
 
 function renderCollectionBoxTable() {
@@ -248,6 +283,10 @@ const collectionBoxPaginationInfo = document.getElementById("collectionBoxPagina
 
 function bindCollectionBoxEvents() {
   if (collectionBoxFilterForm) collectionBoxFilterForm.addEventListener("submit", onCollectionBoxFilterSubmit);
+  document.querySelectorAll("#collectionBoxPanel [data-collection-status]").forEach((card) => {
+    card.addEventListener("click", onCollectionBoxSummaryClick);
+    card.addEventListener("keydown", onCollectionBoxSummaryKeydown);
+  });
   if (resetCollectionBoxFilterBtn) resetCollectionBoxFilterBtn.addEventListener("click", onCollectionBoxFilterReset);
   if (refreshCollectionBoxBtn) refreshCollectionBoxBtn.addEventListener("click", () => loadCollectionBox());
   if (deleteCollectionBoxSelectedBtn) deleteCollectionBoxSelectedBtn.addEventListener("click", onDeleteCollectionBoxSelected);

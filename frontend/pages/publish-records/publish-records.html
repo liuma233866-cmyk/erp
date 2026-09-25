@@ -10,11 +10,11 @@
               </div>
             </div>
             <div class="online-summary-grid" style="margin-bottom:14px;">
-              <article class="online-summary-card is-total"><span>上架记录</span><strong id="publishRecordsTotal">0</strong></article>
-              <article class="online-summary-card is-published"><span>成功</span><strong id="publishRecordsSuccess">0</strong></article>
-              <article class="online-summary-card is-blocked"><span>已拦截</span><strong id="publishRecordsBlocked">0</strong></article>
-              <article class="online-summary-card is-pending"><span>处理中</span><strong id="publishRecordsPending">0</strong></article>
-              <article class="online-summary-card is-failed"><span>失败</span><strong id="publishRecordsFailed">0</strong></article>
+              <article class="online-summary-card is-total" role="button" tabindex="0" data-publish-status="" title="点击显示全部上架记录"><span>上架记录</span><strong id="publishRecordsTotal">0</strong></article>
+              <article class="online-summary-card is-published" role="button" tabindex="0" data-publish-status="success" title="点击只看成功"><span>成功</span><strong id="publishRecordsSuccess">0</strong></article>
+              <article class="online-summary-card is-blocked" role="button" tabindex="0" data-publish-status="blocked" title="点击只看已拦截"><span>已拦截</span><strong id="publishRecordsBlocked">0</strong></article>
+              <article class="online-summary-card is-pending" role="button" tabindex="0" data-publish-status="pending" title="点击只看处理中"><span>处理中</span><strong id="publishRecordsPending">0</strong></article>
+              <article class="online-summary-card is-failed" role="button" tabindex="0" data-publish-status="failed" title="点击只看失败"><span>失败</span><strong id="publishRecordsFailed">0</strong></article>
             </div>
             <form id="publishRecordsFilterForm" class="filter-form">
               <input name="keyword" type="text" placeholder="SKU / 标题 / 操作者 / 店铺" aria-label="关键词" />
