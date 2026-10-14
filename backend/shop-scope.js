@@ -172,7 +172,9 @@ function attachShopIdsToOnlineProducts(items, shops) {
 }
 
 function filterOrdersByAssignments(orders, assignedShopIds, shops) {
-  if (!Array.isArray(assignedShopIds) || !assignedShopIds.length) return orders;
+  // 空分配 = 一个店铺都看不到，绝不能等同于「看到全部」。不受店铺限制的情形
+  // （仅 admin，getUserAssignedShopIds 返回 null）必须由调用方先短路，不走这里。
+  if (!Array.isArray(assignedShopIds) || !assignedShopIds.length) return [];
   const assigned = new Set(assignedShopIds.map(String));
   const byCampaign = new Map();
   const byName = new Map();
@@ -196,7 +198,8 @@ function filterOrdersByAssignments(orders, assignedShopIds, shops) {
 }
 
 function filterOnlineProductsByAssignments(items, assignedShopIds, shops) {
-  if (!Array.isArray(assignedShopIds) || !assignedShopIds.length) return items;
+  // 同 filterOrdersByAssignments：空分配 fail closed。
+  if (!Array.isArray(assignedShopIds) || !assignedShopIds.length) return [];
   const assigned = new Set(assignedShopIds.map(String));
   const byCampaign = new Map();
   const byName = new Map();

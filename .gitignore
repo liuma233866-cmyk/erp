@@ -31,3 +31,11 @@ dsh-test-err.log
 dsh-test-out.log
 upgrade-dsh.log
 .write-test.txt
+
+# 运行时/工具产物，不是源码
+ai-image-tasks.json
+.smoke-*.json
+.release-*.cjs
+.release-*.json
+
+.env.bak-ttl

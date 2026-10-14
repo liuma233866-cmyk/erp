@@ -4,6 +4,7 @@ const { addDaysToYandexDate, buildYandexOrderDateRanges, buildYandexOrderDateRan
 const { extractYandexDeliveryServices, extractYandexOrderId, extractYandexOrders } = require("./yandex-orders-map");
 const { buildYandexCategoryIndexFromList, buildYandexCategoryIndexFromTree, getYandexCategoryListItems, getYandexCategoryTreeRoot } = require("./yandex-category-text");
 const { buildOfferCardsPayload: buildOfferCardsPayloadPure, fetchAllOfferCards: fetchAllOfferCardsPure, parseOfferCardsResponse } = require("./yandex-card-quality");
+const { withFetchTimeout } = require("./http-timeout");
 
 const YANDEX_MARKET_BASE_URL = process.env.YANDEX_MARKET_BASE_URL || "https://api.partner.market.yandex.ru";
 const YANDEX_ORDER_SYNC_LOOKBACK_DAYS = Math.max(29, Number(process.env.YANDEX_ORDER_SYNC_LOOKBACK_DAYS || 180) || 180);
@@ -75,11 +76,11 @@ async function fetchYandexCategoryIndex(apiKey, language = "RU") {
   for (const profile of authProfiles) {
     let nextAuth = false;
     for (const attempt of listAttempts) {
-      const response = await fetch(attempt.endpoint, {
+      const response = await fetch(attempt.endpoint, withFetchTimeout({
         method: attempt.method,
         headers: { ...profile.headers, ...attempt.headers },
         body: attempt.body
-      });
+      }));
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         lastErrorMessage = formatYandexApiError(response.status, data);
@@ -99,11 +100,11 @@ async function fetchYandexCategoryIndex(apiKey, language = "RU") {
     if (nextAuth) continue;
 
     for (const attempt of treeAttempts) {
-      const response = await fetch(treeEndpoint, {
+      const response = await fetch(treeEndpoint, withFetchTimeout({
         method: attempt.method,
         headers: { ...profile.headers, ...attempt.headers },
         body: attempt.body
-      });
+      }));
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         lastErrorMessage = formatYandexApiError(response.status, data);
@@ -187,11 +188,11 @@ async function fetchYandexCategorySuggestions(businessId, apiKey, products) {
   for (const profile of authProfiles) {
     let moveToNextAuth = false;
     for (const payload of payloads) {
-      const response = await fetch(endpoint, {
+      const response = await fetch(endpoint, withFetchTimeout({
         method: "POST",
         headers: { ...profile.headers, "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-      });
+      }));
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         lastErrorMessage = formatYandexApiError(response.status, data);
@@ -292,6 +293,9 @@ async function fetchYandexOrders(campaignId, apiKey, options = {}) {
   for (const profile of authProfiles) {
     const allItems = [];
     const seenOrderIds = new Set();
+    // 区间循环是否因「请求失败」提前中断。必须与 business→legacy 的正常策略回退区分开：
+    // 后者不是数据缺口，前者是。
+    let truncatedByFailure = false;
 
     const strategies = businessId
       ? ["business", "legacy"]
@@ -359,7 +363,11 @@ async function fetchYandexOrders(campaignId, apiKey, options = {}) {
               strategyFailed = true;
               break;
             }
-            if (!shouldRetryWithNextAuth(result.status, data)) strategyFailed = true;
+            if (!shouldRetryWithNextAuth(result.status, data)) {
+              strategyFailed = true;
+              // 真正的失败：剩余时间区间不会再拉取，已收集到的订单属于部分结果。
+              truncatedByFailure = true;
+            }
             break;
           }
 
@@ -405,7 +413,17 @@ async function fetchYandexOrders(campaignId, apiKey, options = {}) {
       }
 
       if (allItems.length > 0) {
-        return { ok: true, items: allItems };
+        // 区间循环中途失败时不能当成「完整拉取成功」返回：180 天回溯被切成多个 29 天窗口，
+        // 第 5 个窗口被限流就会只返回前 4 个窗口的订单，而调用方只判 !ok 的话会把这次同步
+        // 记成成功，丢掉的订单无人知晓。用 partial 标出来，由调用方计入错误摘要。
+        return truncatedByFailure
+          ? {
+              ok: true,
+              items: allItems,
+              partial: true,
+              message: firstErrorMessage || lastErrorMessage || "订单列表未拉全"
+            }
+          : { ok: true, items: allItems };
       }
     }
   }
@@ -599,7 +617,7 @@ async function fetchYandexOrderLabels(campaignId, apiKey, orderId, format = "A4"
   let lastErrorMessage = "";
 
   for (const profile of authProfiles) {
-    const response = await fetch(endpoint, { headers: profile.headers });
+    const response = await fetch(endpoint, withFetchTimeout({ headers: profile.headers }));
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       lastErrorMessage = formatYandexApiError(response.status, data);

@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>商品详情</title>
+    <!-- 与主页面用同一个站点图标，否则浏览器标签上会显示成通用灰图标 -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261008" />
+    <!--
+      商品详情（独立页）：由「商品管理」列表里的商品SKU 在新标签页打开（/product-detail.html?id=<编号>）。
+      刻意不带左侧菜单与顶栏：只有这一个商品的完整详情（状态推进 / 产品资料 / 货源 / 主图素材 / 规格变体）。
+
+      实现要点（重要）：
+      · 详情 DOM 与全部交互逻辑**复用**主页面那份 pages/product-dev/product-dev.js —— 不存在第二套实现，
+        所以录入/推进/删除的行为与主页面完全一致；将来改主页面逻辑，本页同步生效。
+      · product-dev.css 里所有选择器都以 #productDevPanel 限定，因此详情必须包在 id="productDevPanel" 内。
+      · 鉴权：同源 fetch 会自动带上 HttpOnly 的 auth_token 会话 Cookie，本页不碰任何 token。
+    -->
+    <link rel="stylesheet" href="/shared/base.css" />
+    <link rel="stylesheet" href="/pages/product-dev/product-dev.css" />
+    <style>
+      html, body { margin: 0; padding: 0; background: #eef2f9; }
+      body {
+        padding: 18px 16px 60px;
+        font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+        color: #1f2b3b;
+      }
+      /* 顶部条做成一张白色卡片，与主页面「商品管理」的面板头观感一致，
+         不要像之前那样把标题和小字"飘"在渐变背景上。 */
+      .pd-top {
+        max-width: 1320px;
+        margin: 0 auto 14px;
+        padding: 16px 20px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px 12px;
+        flex-wrap: wrap;
+        background: #fff;
+        border: 1px solid #e3eaf5;
+        border-radius: 16px;
+        box-shadow: 0 10px 26px rgba(31, 43, 59, 0.06);
+      }
+      .pd-top strong { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+      /* 编号做成等宽字体胶囊：一眼看出这是 SKU，而不是一行灰色小字 */
+      .pd-top .pd-sub {
+        font-size: 12px;
+        color: #2f6fd0;
+        background: #eef4ff;
+        border: 1px solid #d9e6fb;
+        border-radius: 999px;
+        padding: 3px 12px;
+        font-family: Consolas, "Courier New", monospace;
+      }
+      .pd-top .pd-basic { font-size: 12px; color: #6b7c93; width: 100%; margin: 4px 0 0; }
+      .pd-top a.pd-back {
+        margin-left: auto;
+        padding: 9px 16px;
+        border: 1px solid #c9d8ee;
+        border-radius: 10px;
+        background: #fff;
+        color: #1f2b3b;
+        text-decoration: none;
+        white-space: nowrap;
+        font-size: 13px;
+        transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+      }
+      .pd-top a.pd-back:hover { border-color: #2f6fd0; color: #2f6fd0; background: #f6f9ff; }
+      #productDevPanel { max-width: 1320px; margin: 0 auto; }
+      /* 独立页没有 app 的固定高度约束，面板不要裁切内容；并补上与主页面一致的卡片观感 */
+      #productDevPanel.panel {
+        overflow: visible;
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 10px 26px rgba(31, 43, 59, 0.06);
+      }
+      #productDevPanel .pdev-detail-col { min-width: 0; }
+    </style>
+  <style>
+  /* pdev-shell-css：详情页外壳（标题栏 + 左侧菜单 + 右侧内容） */
+  .pdev-detail-shell { display: flex; align-items: flex-start; gap: 18px; max-width: 1280px; margin: 0 auto; padding: 0 16px 40px; }
+  .pdev-detail-nav { flex: 0 0 190px; position: sticky; top: 16px; background: #fff; border: 1px solid #e6ecf5; border-radius: 14px; padding: 14px 10px; box-shadow: 0 6px 20px rgba(31,43,59,.05); }
+  .pdev-detail-nav-title { font-size: 14px; font-weight: 600; color: #1f2b3b; padding: 4px 10px 12px; }
+  .pdev-nav-item { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: #4a5a70; font-size: 14px; padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 2px; }
+  .pdev-nav-item:hover { background: #f2f6fd; color: #1f2b3b; }
+  .pdev-nav-item.active { background: #e8f1ff; color: #1a63d8; font-weight: 600; }
+  .pdev-detail-content { flex: 1 1 auto; min-width: 0; }
+  .pdev-detail-content .pdev-block { margin-bottom: 16px; }
+  .pdev-empty-note { color: #7b8a9e; font-size: 13px; padding: 6px 2px 2px; }
+  .pdev-detail-content .hidden { display: none !important; }
+</style>
+<style>
+  /* pdev-topbar-css：顶部通栏标题栏 + 左侧菜单整列面板 */
+  .pdev-detail-topbar {
+    background: #2f6fed;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 14px 22px;
+    margin: 0 0 16px;
+    letter-spacing: .5px;
+  }
+  .pdev-detail-shell { padding-top: 0 !important; }
+  .pdev-detail-nav { min-height: 420px; top: 12px; }
+  .pdev-detail-nav-title { display: none; }
+</style>
+<style>
+  /* pdev-scroll-area：右侧内容区独立滚动（内容超过一屏时在右边出现滚动条），左侧菜单固定 */
+  .pdev-detail-shell { align-items: flex-start; }
+  .pdev-detail-content {
+    /* 高度：视口高度减去顶部标题栏与上下留白；最小值保证小屏也够用 */
+    max-height: calc(100vh - 96px);
+    min-height: 360px;
+    /* 用 scroll 而不是 auto：始终显示滚动条轨道，改了样式一眼能看出来；不需要滚动时也无害 */
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    padding-right: 10px;
+    scrollbar-width: thin;              /* Firefox：细滚动条 */
+    scrollbar-color: #b9cbef #eef3fb;   /* Firefox：滑块 / 轨道 */
+  }
+  /* Chrome / Edge：把滚动条画成细长的一条，并让它一直可见 */
+  .pdev-detail-content::-webkit-scrollbar { width: 10px; }
+  .pdev-detail-content::-webkit-scrollbar-track { background: #eef3fb; border-radius: 999px; }
+  .pdev-detail-content::-webkit-scrollbar-thumb { background: #b9cbef; border-radius: 999px; border: 2px solid #eef3fb; }
+  .pdev-detail-content::-webkit-scrollbar-thumb:hover { background: #93aee0; }
+  /* 左侧菜单跟随内容区高度，不至于中途"断掉" */
+  .pdev-detail-nav { max-height: calc(100vh - 96px); overflow-y: auto; }
+</style>
+<style>
+  /* pdev-stack-blocks：模块上下排列，不再互相隐藏；内容区滚到底能看到全部模块 */
+  .pdev-detail-content .pdev-block[data-pdev-section] { display: block !important; }
+  .pdev-detail-content .pdev-block + .pdev-block {
+    margin-top: 14px;
+    border-top: 1px dashed #e3eaf5;
+    padding-top: 14px;
+  }
+  .pdev-detail-content [data-pdev-section].hidden { display: block !important; }
+</style>
+<style>
+  /* pdev-head-sticky：详情头部（SKU 卡片）冻结在内容区顶部（滚动时不动） */
+  .pdev-detail-head {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 6;
+    background: #fff !important;                        /* 必须不透明，否则下方内容会透出来 */
+    border-bottom: 1px solid #e6ecf5;
+    box-shadow: 0 8px 14px -10px rgba(31, 43, 59, .25);
+    margin-bottom: 8px;
+  }
+</style>
+<style>
+  /* pdev-sku-badge：详情头部 SKU 标签（做大、做亮、美化） */
+  .pdev-detail-head .pdev-public-id,
+  #pdevDetailPublicId {
+    display: inline-block;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: .6px;
+    color: #1f2b3b !important;
+    background: linear-gradient(180deg, #eef5ff 0%, #dbe8ff 100%) !important;
+    border: 1px solid #b9d2ff !important;
+    border-radius: 999px !important;
+    padding: 9px 20px !important;
+    line-height: 1.25;
+    box-shadow: 0 6px 14px -8px rgba(18, 87, 196, .55), inset 0 1px 0 #fff;
+  }
+</style>
+<style>
+  /* pdev-asset-img-fix：详情页里的素材/主图按缩略图尺寸显示，避免原图撑满整屏 */
+  .pdev-detail-content img:not(.pdev-plat-logo) {
+    max-width: 180px !important;
+    max-height: 180px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e3eaf5;
+  }
+</style>
+<style>
+  /* pdev-single-scroll：整页不滚，只保留右侧内容区一条滚动条 */
+  html, body { height: 100%; overflow: hidden !important; }
+  .pdev-detail-shell { height: calc(100vh - 78px); align-items: stretch !important; }
+  .pdev-detail-content { height: 100%; max-height: none !important; overflow-y: auto !important; }
+  .pdev-detail-nav { max-height: 100%; overflow-y: auto; }
+</style>
+<style>
+  /* pdev-head-tight：压紧冻结的 SKU 卡片（去掉多余上下留白） */
+  .pdev-detail-head {
+    padding: 6px 12px !important;
+    margin: 0 0 4px !important;
+    min-height: 0 !important;
+    line-height: 1.1 !important;
+  }
+  .pdev-detail-head > div { margin: 0 !important; padding: 0 !important; }
+  #pdevDetailPublicId { margin: 0 !important; }
+</style>
+</head>
+  <body>
+<div class="pdev-detail-topbar">商品详情</div>
+<div class="pdev-detail-shell">
+  <aside class="pdev-detail-nav">
+    <button type="button" class="pdev-nav-item" data-pdev-nav="sku">SKU信息</button>
+    <button type="button" class="pdev-nav-item" data-pdev-nav="media">图片资料</button>
+    <button type="button" class="pdev-nav-item" data-pdev-nav="logistics">物流资料</button>
+    <button type="button" class="pdev-nav-item" data-pdev-nav="package">包装信息</button>
+  </aside>
+  <div class="pdev-detail-content">
+    <section data-pdev-section="logistics" class="pdev-block pdev-empty-block hidden"><div class="pdev-block-head"><span class="pdev-block-title">物流资料</span></div><p class="pdev-empty-note">暂未开放：等确定物流字段后在这里录入。</p></section>
+    <section data-pdev-section="package" class="pdev-block pdev-empty-block hidden"><div class="pdev-block-head"><span class="pdev-block-title">包装信息</span></div>      <div class="pdev-pack-form" data-pdev-pack-form="1">
+        <div class="pdev-pack-group">
+          <div class="pdev-pack-group-title">包装方式</div>
+          <div class="pdev-pack-grid">
+            <label class="pdev-field pdev-pack-field" for="pdevPack_packForm">
+              <span>包装形态</span>
+              <select id="pdevPack_packForm" data-pdev-pack="packForm">
+                <option value=""></option>
+                <option value="标准包装">标准包装</option>
+                <option value="定制包装">定制包装</option>
+                <option value="无包装">无包装</option>
+              </select>
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_packOuter">
+              <span>外部包装</span>
+              <select id="pdevPack_packOuter" data-pdev-pack="packOuter">
+                <option value=""></option>
+                <option value="中性纸盒">中性纸盒</option>
+                <option value="彩盒">彩盒</option>
+                <option value="编织袋">编织袋</option>
+                <option value="无">无</option>
+              </select>
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_packCushion">
+              <span>缓冲包装</span>
+              <select id="pdevPack_packCushion" data-pdev-pack="packCushion">
+                <option value=""></option>
+                <option value="无">无</option>
+                <option value="气泡膜">气泡膜</option>
+                <option value="珍珠棉">珍珠棉</option>
+                <option value="泡沫">泡沫</option>
+              </select>
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_packReinforce">
+              <span>加固方式</span>
+              <select id="pdevPack_packReinforce" data-pdev-pack="packReinforce">
+                <option value=""></option>
+                <option value="无需加固">无需加固</option>
+                <option value="护角">护角</option>
+                <option value="打木架">打木架</option>
+                <option value="打木箱">打木箱</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="pdev-pack-group">
+          <div class="pdev-pack-group-title">样品开发包装</div>
+          <div class="pdev-pack-grid">
+            <label class="pdev-field pdev-pack-field" for="pdevPack_samplePackSize">
+              <span>样品开发包装尺寸(CM)</span>
+              <input id="pdevPack_samplePackSize" data-pdev-pack="samplePackSize" type="text" maxlength="64" placeholder="61.5*14.5*8" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_samplePackWeight">
+              <span>样品开发包装毛重(KG)</span>
+              <input id="pdevPack_samplePackWeight" data-pdev-pack="samplePackWeight" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+          </div>
+        </div>
+        <div class="pdev-pack-group">
+          <div class="pdev-pack-group-title">基准包装</div>
+          <div class="pdev-pack-grid">
+            <label class="pdev-field pdev-pack-field" for="pdevPack_basePackSizeCm">
+              <span>基准包装尺寸(CM)</span>
+              <input id="pdevPack_basePackSizeCm" data-pdev-pack="basePackSizeCm" type="text" maxlength="64" placeholder="61.5*14.5*8" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_basePackWeightKg">
+              <span>基准包装毛重(KG)</span>
+              <input id="pdevPack_basePackWeightKg" data-pdev-pack="basePackWeightKg" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_basePackSizeInch">
+              <span>基准包装尺寸(inch)</span>
+              <input id="pdevPack_basePackSizeInch" data-pdev-pack="basePackSizeInch" type="text" maxlength="64" placeholder="25.00*6.00*4.00" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_basePackWeightLb">
+              <span>基准包装毛重(LB)</span>
+              <input id="pdevPack_basePackWeightLb" data-pdev-pack="basePackWeightLb" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_basePackVolumeM3">
+              <span>基准包装体积(M³)</span>
+              <input id="pdevPack_basePackVolumeM3" data-pdev-pack="basePackVolumeM3" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+          </div>
+        </div>
+        <div class="pdev-pack-group">
+          <div class="pdev-pack-group-title">单个商品</div>
+          <div class="pdev-pack-grid">
+            <label class="pdev-field pdev-pack-field" for="pdevPack_itemSizeCm">
+              <span>单个商品尺寸(CM)</span>
+              <input id="pdevPack_itemSizeCm" data-pdev-pack="itemSizeCm" type="text" maxlength="64" placeholder="60*12*6" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_itemNetWeightKg">
+              <span>单个商品净重(KG)</span>
+              <input id="pdevPack_itemNetWeightKg" data-pdev-pack="itemNetWeightKg" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+          </div>
+        </div>
+        <div class="pdev-pack-group">
+          <div class="pdev-pack-group-title">外箱</div>
+          <div class="pdev-pack-grid">
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonSizeCm">
+              <span>外箱尺寸(CM)</span>
+              <input id="pdevPack_cartonSizeCm" data-pdev-pack="cartonSizeCm" type="text" maxlength="64" placeholder="70*36*32" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonWeightKg">
+              <span>外箱毛重(KG)</span>
+              <input id="pdevPack_cartonWeightKg" data-pdev-pack="cartonWeightKg" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonVolumeM3">
+              <span>外箱体积(M³)</span>
+              <input id="pdevPack_cartonVolumeM3" data-pdev-pack="cartonVolumeM3" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+          </div>
+        </div>
+        <div class="pdev-pack-group">
+          <div class="pdev-pack-group-title">装箱与成本</div>
+          <div class="pdev-pack-grid">
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonPcs">
+              <span>装箱规格PCS</span>
+              <input id="pdevPack_cartonPcs" data-pdev-pack="cartonPcs" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_baseUnit">
+              <span>基本单位</span>
+              <input id="pdevPack_baseUnit" data-pdev-pack="baseUnit" type="text" maxlength="64" placeholder="套" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonLayers">
+              <span>纸箱层数</span>
+              <input id="pdevPack_cartonLayers" data-pdev-pack="cartonLayers" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonInnerGsm">
+              <span>纸箱内层克重</span>
+              <input id="pdevPack_cartonInnerGsm" data-pdev-pack="cartonInnerGsm" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonOuterGsm">
+              <span>纸箱外层克重</span>
+              <input id="pdevPack_cartonOuterGsm" data-pdev-pack="cartonOuterGsm" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_laborCost">
+              <span>人工操作费</span>
+              <input id="pdevPack_laborCost" data-pdev-pack="laborCost" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+            <label class="pdev-field pdev-pack-field" for="pdevPack_cartonPrice">
+              <span>纸箱价格</span>
+              <input id="pdevPack_cartonPrice" data-pdev-pack="cartonPrice" type="number" step="0.001" min="0" placeholder="0" />
+            </label>
+          </div>
+        </div>
+      </div>
+      <style>
+        /* pdev-pack-*：包装信息表单（6 组，三列网格） */
+        .pdev-pack-group { margin: 0 0 14px; padding: 0 0 12px; border-bottom: 1px dashed #e3eaf5; }
+        .pdev-pack-group:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+        .pdev-pack-group-title { font-size: 13px; font-weight: 600; color: #1f2b3b; margin: 0 0 8px; }
+        .pdev-pack-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; }
+        .pdev-pack-field { display: block; }
+        .pdev-pack-field > span { display: block; font-size: 13px; color: #4a5a70; margin-bottom: 5px; }
+        .pdev-pack-field input, .pdev-pack-field select { width: 100%; }
+        @media (max-width: 1100px) { .pdev-pack-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      </style></section>
+
+
+    <section id="productDevPanel" class="panel">
+<section class="pdev-detail-col">
+                <div id="pdevDetail" class="pdev-detail hidden">
+                  <header class="pdev-detail-head">
+                    <div>
+                      <span id="pdevDetailPublicId" class="pdev-public-id"></span>
+                    </div>
+                  </header>
+
+                  <div id="pdevDetailMessage" class="message small"></div>
+
+
+
+                  <section data-pdev-section="sku" class="pdev-block">
+                    <div class="pdev-block-head">
+                      <div>
+                        <span class="pdev-block-title">产品资料</span>
+                      </div>
+                    </div>
+                    <form id="pdevProductForm" class="pdev-form">
+                      <label class="pdev-field pdev-field-wide">
+                        <span>商品名称 *</span>
+                        <input id="pdevProductTitle" name="title" type="text" maxlength="500" required />
+                      </label>
+                      <label class="pdev-field">
+                        <span>系统类目</span>
+                        <select id="pdevProductSystemCategory" name="systemCategory"><option value="">不标记</option></select>
+                      </label>
+                      <label class="pdev-field">
+                        <span>商品状态</span>
+                        <select id="pdevProductGoodsStatus" name="goodsStatus">
+                          <option value="">不标记</option>
+                          <option value="在售">在售</option>
+                          <option value="停售">停售</option>
+                          <option value="禁售">禁售</option>
+                        </select>
+                      </label>
+                      <label class="pdev-field">
+                        <span>销售状态</span>
+                        <select id="pdevProductSalesStatus" name="salesStatus">
+                          <option value="">不标记</option>
+                          <option value="新品">新品</option>
+                          <option value="畅销">畅销</option>
+                          <option value="平销">平销</option>
+                          <option value="低销">低销</option>
+                          <option value="清仓">清仓</option>
+                          <option value="待下架">待下架</option>
+                          <option value="下架">下架</option>
+                        </select>
+                      </label>
+                      <label class="pdev-field">
+                        <span>货源状态</span>
+                        <select id="pdevProductSourceStatus" name="sourceStatus">
+                          <option value="">不标记</option>
+                          <option value="正常货源">正常货源</option>
+                          <option value="货源受限">货源受限</option>
+                        </select>
+                      </label>
+                      <label class="pdev-field">
+                        <span>最新采购价（￥）</span>
+                        <input id="pdevProductPurchasePrice" name="purchasePrice" type="number" step="0.01" min="0" placeholder="0.00" />
+                      </label>
+                      <label class="pdev-field">
+                        <span>采购链接</span>
+                        <input id="pdevProductPurchaseUrl" name="purchaseUrl" type="text" maxlength="512" placeholder="https://…" />
+                      </label>
+                      <label class="pdev-field">
+                        <span>参考链接</span>
+                        <input id="pdevProductReferenceUrl" name="referenceUrl" type="text" maxlength="512" placeholder="https://…" />
+                      </label>
+                      <label class="pdev-field">
+                        <span>是否组合商品</span>
+                        <select id="pdevProductIsBundle" name="isBundle">
+                          <option value="">不标记</option>
+                          <option value="是">是</option>
+                          <option value="否">否</option>
+                        </select>
+                      </label>
+                      <label class="pdev-field">
+                        <span>负责人账号</span>
+                        <input id="pdevProductOwner" name="ownerUserId" type="text" maxlength="128" />
+                      </label>
+                      <label class="pdev-field pdev-field-wide">
+                        <span>备注</span>
+                        <textarea id="pdevProductRemark" name="remark" rows="2"></textarea>
+                      </label>
+                      <div class="pdev-form-actions">
+                        <button type="submit" id="pdevSaveProductBtn">保存资料</button>
+                        <button type="button" class="pdev-danger-btn" id="pdevDeleteProductBtn">删除产品</button>
+                        <span id="pdevProductFormMsg" class="pdev-inline-msg"></span>
+                      </div>
+                    </form>
+                  </section>
+
+
+                  <section data-pdev-section="media" class="pdev-block">
+                    <div class="pdev-block-head">
+                      <div>
+                        <span class="pdev-block-title">图片资料</span>
+                        <span class="pdev-block-sub">至少 1 张主图，才能推进到「资料齐备」。</span>
+                      </div>
+                    </div>
+                    <div id="pdevAssetList" class="pdev-asset-list"></div>
+                    <form id="pdevAssetForm" class="pdev-quick-add">
+                      <div class="pdev-quick-add-grid">
+                        <label class="pdev-field">
+                          <span>类型 *</span>
+                          <select id="pdevAssetType">
+                            <option value="main">主图</option>
+                            <option value="gallery">轮播图</option>
+                            <option value="detail">详情图</option>
+                            <option value="ai">AI图</option>
+                          </select>
+                        </label>
+                        <label class="pdev-field pdev-field-wide">
+                          <span class="pdev-field-label pdev-auto-tag">其他链接 · 图片原始地址<small>仅供核对，不是货源链接</small></span>
+                          <input id="pdevAssetUrl" type="url" placeholder="https://img.example.com/main.jpg" />
+                        </label>
+                        <label class="pdev-field">
+                          <span>排序</span>
+                          <input id="pdevAssetSortNo" type="number" step="1" value="0" />
+                        </label>
+                      </div>
+                      <div class="pdev-quick-add-actions">
+                        <button type="submit" id="pdevAddAssetBtn">添加素材</button>
+                        <span id="pdevAssetFormMsg" class="pdev-inline-msg"></span>
+                      </div>
+                    </form>
+                  </section>
+
+                  <section data-pdev-section="sku" class="pdev-block">
+                    <div class="pdev-block-head">
+                      <div>
+                        <span class="pdev-block-title">规格 / 变体</span>
+                        <span class="pdev-block-sub">同一个产品下规格不能重复；变体暂不支持删除。</span>
+                      </div>
+                    </div>
+                    <div id="pdevVariantList" class="pdev-variant-list"></div>
+                    <form id="pdevVariantForm" class="pdev-quick-add">
+                      <div class="pdev-quick-add-grid">
+                        <label class="pdev-field pdev-field-wide">
+                          <span>规格 *（键=值，用分号分隔）</span>
+                          <input id="pdevVariantSpec" type="text" placeholder="颜色=黑;尺寸=L" />
+                        </label>
+                        <label class="pdev-field">
+                          <span>变体供货价</span>
+                          <input id="pdevVariantPrice" type="number" step="0.01" min="0" />
+                        </label>
+                        <label class="pdev-field">
+                          <span>重量 kg</span>
+                          <input id="pdevVariantWeight" type="number" step="0.001" min="0" />
+                        </label>
+                        <label class="pdev-field">
+                          <span>包装长 cm</span>
+                          <input id="pdevVariantLength" type="number" step="0.01" min="0" />
+                        </label>
+                        <label class="pdev-field">
+                          <span>包装宽 cm</span>
+                          <input id="pdevVariantWidth" type="number" step="0.01" min="0" />
+                        </label>
+                        <label class="pdev-field">
+                          <span>包装高 cm</span>
+                          <input id="pdevVariantHeight" type="number" step="0.01" min="0" />
+                        </label>
+                      </div>
+                      <div class="pdev-quick-add-actions">
+                        <button type="submit" id="pdevAddVariantBtn">添加变体</button>
+                        <span id="pdevVariantFormMsg" class="pdev-inline-msg"></span>
+                      </div>
+                    </form>
+                  </section>
+                </div>
+              </section>
+    </section>
+
+    <script>
+      // 宿主环境：product-dev.js 只依赖 state（登录用户键），apiRequest 由 shared/core/api.js 提供。
+      // 本页不需要 clearAuth/showAuth 的真实行为（401 时只是提示一下）。
+      window.state = { user: null, panelLoaded: {} };
+      window.clearAuth = function () {};
+      window.showAuth = function () {};
+    </script>
+    <script src="/shared/core/api.js"></script>
+    <script src="/pages/product-dev/product-dev.js"></script>
+    <script>
+      (function () {
+        var id = "";
+        try { id = String(new URLSearchParams(location.search).get("id") || "").trim(); } catch (error) { id = ""; }
+        var sub = document.getElementById("pdSub");
+        if (sub) sub.textContent = id ? "编号 " + id : "";
+        // 浏览器标签标题用这个商品的 SKU（不是笼统的「商品详情」），这样同时开多个详情页时一眼能分清
+        if (id) document.title = id;
+        if (typeof bindProductDevEvents === "function") bindProductDevEvents();
+        if (!id) {
+          var box = document.getElementById("pdevDetailMessage");
+          if (box) { box.textContent = "地址里缺少商品编号：请用 /product-detail.html?id=PD_xxx 打开。"; box.classList.add("is-error"); }
+          return;
+        }
+        Promise.resolve(pdevLoadDetail(id)).then(function (ok) {
+          // 注意：pdevState 是 product-dev.js 里的 const 全局词法绑定，不挂在 window 上
+          var detail = (typeof pdevState !== "undefined" && pdevState) ? pdevState.detail : null;
+          var product = detail && detail.product ? detail.product : null;
+          var basic = document.getElementById("pdBasic");
+          if (!basic || !product) return;
+          var pad = function (n) { return String(n).padStart(2, "0"); };
+          var fmt = function (v) {
+            if (!v) return "—";
+            var d = new Date(v);
+            if (isNaN(d.getTime())) return String(v);
+            return d.getFullYear() + "/" + pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+          };
+          basic.textContent = "创建 " + fmt(product.createdAt) + " ｜ 更新 " + fmt(product.updatedAt) + " ｜ 操作人 " + (product.createdBy || "—") + (ok ? "" : " ｜ 详情加载失败");
+        });
+      })();
+    </script>
+    <!-- 折叠/收起功能已按需求整体移除 -->
+
+  </div>
+</div>
+<script>
+  // pdevDetailNavWire：按左侧菜单顺序排列 6 个模块（运行时搬齐 + flex order），并支持点击定位。
+  (function () {
+    var shell = document.querySelector('.pdev-detail-shell');
+    if (!shell) return;
+    var ORDER = { sku: 1, media: 2, logistics: 3, package: 4 };
+
+    function arrange() {
+      var buttons = shell.querySelectorAll('[data-pdev-nav]');
+      var blocks = Array.prototype.slice.call(shell.querySelectorAll('[data-pdev-section]'));
+      if (blocks.length < 1) return;
+      // 所有模块先全部显示（不再互相隐藏）
+      blocks.forEach(function (b) { b.classList.remove('hidden'); b.style.display = ''; });
+            // 以「产品资料」所在的那一层为准（那是表单网格样式的作用域，绝不能把真区块搬走）
+      var basicBlock = blocks.filter(function (b) { return String((b.querySelector('.pdev-block-title') || {}).textContent || '').indexOf('产品资料') >= 0; })[0] || blocks[blocks.length - 1];
+      if (!basicBlock || !basicBlock.parentElement) return;
+      var host = basicBlock.parentElement;   // ← 只搬空壳，真区块原地不动
+      if (getComputedStyle(host).display === 'block') {
+        host.style.display = 'flex';
+        host.style.flexDirection = 'column';
+      }
+      blocks.forEach(function (b) {
+        if (b.parentElement !== host) host.appendChild(b);
+        b.style.order = String(ORDER[b.getAttribute('data-pdev-section')] || 99);
+        // 视觉第一个模块（order 最小的）上方间距清零 —— 让顶部卡片紧贴内容
+        if (String(ORDER[b.getAttribute('data-pdev-section')] || 99) === '1') {
+          b.style.marginTop = '0';
+          b.style.borderTop = '0';
+          b.style.paddingTop = '0';
+        }
+      });
+      // 头部（SKU 卡片）保持最上面
+      var head = host.querySelector('.pdev-detail-head');
+      if (head) head.style.order = '0';
+      bindClicks(buttons, blocks);
+      // 默认高亮第一个菜单项（不依赖块的 DOM 顺序 —— arrange 会搬动它们）
+      var firstKey = buttons.length ? buttons[0].getAttribute('data-pdev-nav') : null;
+      if (firstKey) {
+        Array.prototype.forEach.call(buttons, function (x) {
+          x.classList.toggle('active', x.getAttribute('data-pdev-nav') === firstKey);
+        });
+      }
+    }
+
+    function bindClicks(buttons, blocks) {
+      var content = shell.querySelector('.pdev-detail-content');
+      Array.prototype.forEach.call(buttons, function (b) {
+        if (b.getAttribute('data-pdev-bound') === '1') return;
+        b.setAttribute('data-pdev-bound', '1');
+        b.addEventListener('click', function () {
+          var key = b.getAttribute('data-pdev-nav');
+          var target = null;
+          Array.prototype.forEach.call(blocks, function (blk) { if (!target && blk.getAttribute('data-pdev-section') === key) target = blk; });
+          if (!target) return;
+          Array.prototype.forEach.call(buttons, function (x) { x.classList.toggle('active', x === b); });
+          if (content && content.scrollTo) content.scrollTo({ top: target.offsetTop - content.offsetTop - 8, behavior: 'smooth' });
+          else target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+      if (content && content.getAttribute('data-pdev-spy') !== '1') {
+        content.setAttribute('data-pdev-spy', '1');
+        content.addEventListener('scroll', function () {
+          var best = null, bestDist = Infinity;
+          Array.prototype.forEach.call(blocks, function (blk) {
+            var d = Math.abs(blk.offsetTop - content.offsetTop - content.scrollTop);
+            if (d < bestDist) { bestDist = d; best = blk.getAttribute('data-pdev-section'); }
+          });
+          if (best) Array.prototype.forEach.call(buttons, function (x) { x.classList.toggle('active', x.getAttribute('data-pdev-nav') === best); });
+        });
+      }
+    }
+
+    arrange();
+    // 详情是异步渲染的，渲染完再排一次（DOM 变了也兜住）
+    var n = 0, timer = setInterval(function () { arrange(); if (++n > 20) clearInterval(timer); }, 400);
+  })();
+</script>
+</body>
+</html>
+
+<script>
+  // 图片上传（本页专有）：在「主图 / 素材」的图片地址输入框旁边加一个「选择本地图片」按钮。
+  // 选定 → 读成 base64 → POST /api/uploads → 把返回地址自动填进输入框（你再点「添加素材」即可）。
+  (function () {
+    var urlInput = document.getElementById("pdevAssetUrl");
+    if (!urlInput) return;
+    var file = document.createElement("input");
+    file.type = "file";
+    file.accept = "image/png,image/jpeg,image/webp,image/gif";
+    file.style.display = "none";
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "pdevUploadImageBtn";
+    btn.className = "secondary-btn";
+    btn.textContent = "选择本地图片";
+    btn.style.marginLeft = "8px";
+    urlInput.parentNode.appendChild(file);
+    urlInput.parentNode.appendChild(btn);
+    btn.addEventListener("click", function () { file.click(); });
+    file.addEventListener("change", function () {
+      var picked = file.files && file.files[0];
+      if (!picked) return;
+      if (picked.size > 5 * 1024 * 1024) { btn.textContent = "超过 5MB"; setTimeout(function () { btn.textContent = "选择本地图片"; }, 2000); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        btn.textContent = "上传中…";
+        fetch("/api/uploads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ filename: picked.name, dataUrl: String(reader.result || "") })
+        }).then(function (r) { return r.json().catch(function () { return null; }).then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); })
+          .then(function (res) {
+            if (!res.ok || !res.data || !res.data.url) {
+              btn.textContent = "上传失败";
+              setTimeout(function () { btn.textContent = "选择本地图片"; }, 2500);
+              return;
+            }
+            urlInput.value = res.data.url;
+            btn.textContent = "已上传 ✓";
+            setTimeout(function () { btn.textContent = "选择本地图片"; }, 2000);
+          })
+          .catch(function () { btn.textContent = "上传异常"; setTimeout(function () { btn.textContent = "选择本地图片"; }, 2500); });
+      };
+      reader.readAsDataURL(picked);
+    });
+  })();
+</script>

@@ -28,7 +28,8 @@ const state = {
   financePurchasePage: 1,
   financePurchasePageSize: 20,
   financePurchaseFilters: { orderNo: "", sku: "", purchasePlatform: "" },
-  dashboardOrders: [],
+  // 仪表盘数据不再在前端保存订单数组：聚合由 GET /api/orders/summary 提供，
+  // 结果存在 reports.js 的 dashboardState.summary 里（曾经这里放的是整张 orders 表）。
   orderWorkspace: "v1",
   filteredOrders: [],
   selectedOrderIds: [],

@@ -8,7 +8,7 @@ test("maps an Ozon posting to a CNY V2 order", () => {
     status: "delivered",
     in_process_at: "2026-08-10T08:00:00Z",
     products: [{ offer_id: "SKU-1", name: "商品", quantity: 2, price: "19.50", currency_code: "CNY" }]
-  }, { id: "SHOP-1", name: "Ozon店", campaignId: "2588746" });
+  }, { id: "SHOP-1", name: "Ozon店", campaignId: "CAMPAIGN-TEST-1" });
   assert.equal(order.amount, 39);
   assert.equal(order.currency, "CNY");
   assert.equal(order.customerReceiptCode, "received");

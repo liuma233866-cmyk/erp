@@ -1,0 +1,524 @@
+<!-- SKU 关系管理：商品管理商品（A2） ↔ 店铺在线产品（A1）的人工绑定关系 -->
+<!-- 布局参照产品库风格：筛选栏 + 操作按钮 + 表格。行为待补充。 -->
+<section id="skuLinksPanel" class="panel hidden">
+  <style>
+    /* SKU关系管理：本页样式（作用域 #skuLinksPanel） */
+    #skuLinksPanel .skl-filter { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 12px 22px; padding: 16px 18px; background: #fff; border: 1px solid #e6ecf5; border-radius: 14px; }
+    #skuLinksPanel .skl-field { display: flex; align-items: center; gap: 10px; }
+    #skuLinksPanel .skl-field > span { flex: 0 0 auto; font-size: 13px; color: #1f2b3b; white-space: nowrap; }
+    #skuLinksPanel .skl-field input, #skuLinksPanel .skl-field select { flex: 1 1 auto; min-width: 0; height: 34px; }
+    #skuLinksPanel .skl-field-wide { grid-column: span 2; }
+    #skuLinksPanel .skl-row-actions { display: flex; justify-content: flex-end; gap: 10px; grid-column: 1 / -1; }
+    #skuLinksPanel .skl-btn { min-width: 76px; height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid #cfe0ff; background: #fff; color: #1f2b3b; cursor: pointer; font-size: 13px; }
+    #skuLinksPanel .skl-btn.primary { background: #1976f3; border-color: #1976f3; color: #fff; }
+    #skuLinksPanel .skl-btn.primary:hover { background: #1667d8; }
+    #skuLinksPanel .skl-table-wrap { overflow: auto; background: #fff; border: 1px solid #e6ecf5; border-radius: 14px; }
+    #skuLinksPanel .skl-table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    /* 表头：浅色背景 + 居中 + 字号略小加粗 + 列间竖向分隔线（对齐参考图） */
+    #skuLinksPanel .skl-table-wrap th { position: sticky; top: 0; z-index: 1; background: #f5f8fd; color: #4a5a70; font-weight: 600; font-size: 12.5px; text-align: center; padding: 12px 12px; white-space: nowrap; border-bottom: 1px solid #e6ecf5; border-right: 1px solid #e6ecf5; }
+    #skuLinksPanel .skl-table-wrap th:last-child { border-right: 0; }
+    /* 行：白底 / 约 52px 行高 / 行间横向分隔线 / 极浅竖向分隔线 */
+    #skuLinksPanel .skl-table-wrap td { padding: 0 12px; height: 52px; border-bottom: 1px solid #eef2f8; border-right: 1px solid #f4f7fb; color: #1f2b3b; vertical-align: middle; white-space: nowrap; }
+    #skuLinksPanel .skl-table-wrap td:last-child { border-right: 0; }
+    #skuLinksPanel .skl-table-wrap tbody tr { background: #fff; }
+    #skuLinksPanel .skl-table-wrap tbody tr:hover { background: #f8fbff; }
+    #skuLinksPanel .skl-table-wrap td.skl-empty { text-align: center; color: #8a99ad; padding: 26px 0; white-space: normal; }
+    /* 店铺SKU 单元格：可点展开箭头 ▾ + SKU 文本 + 小蓝色图标（内联 SVG，不外链） */
+    #skuLinksPanel .skl-shop-sku { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+    #skuLinksPanel .skl-expand { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: #6b7c93; font-size: 13px; line-height: 1; cursor: pointer; user-select: none; }
+    #skuLinksPanel .skl-expand:hover { color: #1976f3; }
+    #skuLinksPanel .skl-sku-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+    /* 【task-14】店铺SKU 后面的小蓝色图标 = 真正的「复制店铺SKU」按钮：
+       用 button 元素重置成纯图标外观。注意 shared/base.css:338 有全局
+       `button { height:42px; border-radius:12px; 渐变背景; box-shadow; hover 上浮/变亮; active 缩放 }`，
+       必须逐条压掉，否则图标外面会多出 42px 高的阴影热区并带上浮动效；尺寸与颜色保持 task-6 原样。 */
+    #skuLinksPanel .skl-sku-icon-wrap { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 13px; height: 13px; min-height: 0; padding: 0; margin: 0; gap: 0; border: 0; border-radius: 4px; background: none; box-shadow: none; color: #1976f3; font: inherit; letter-spacing: normal; line-height: 0; cursor: pointer; transform: none; transition: none; -webkit-appearance: none; appearance: none; }
+    #skuLinksPanel .skl-sku-icon-wrap:hover { color: #1667d8; background: none; box-shadow: none; filter: none; transform: none; }
+    #skuLinksPanel .skl-sku-icon-wrap:active { transform: none; filter: none; }
+    #skuLinksPanel .skl-sku-icon-wrap:focus-visible { outline: 2px solid #1976f3; outline-offset: 1px; }
+    #skuLinksPanel .skl-sku-icon-wrap.is-copied { color: #1c7c3c; }
+    #skuLinksPanel .skl-sku-icon { display: block; width: 13px; height: 13px; color: inherit; }
+    /* 是否为组合SKU（红字）/ 组合信息 / 操作（蓝色文字链接） */
+    #skuLinksPanel .skl-table-wrap td.skl-cell-center { text-align: center; }
+    #skuLinksPanel .skl-bundle { color: #e54545; }
+    #skuLinksPanel .skl-combo { color: #8a99ad; }
+    #skuLinksPanel .skl-link { color: #1976f3; text-decoration: none; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+    #skuLinksPanel .skl-link:hover { color: #1667d8; text-decoration: underline; }
+    /* 【task-8】展开行：父行下方一条 colspan=7 的明细行，里面是「商品SKU / 数量 / 产品名称」子表 */
+    /* 【task-10】① 子表铺满整行：外层 td 不留左右内边距、内层 table 宽度 100%，宽度与父行一致 */
+    #skuLinksPanel .skl-expand { width: 18px; height: 18px; border-radius: 4px; }
+    #skuLinksPanel .skl-expand:hover { background: #eef4ff; }
+    #skuLinksPanel .skl-expand[aria-expanded="true"] { color: #1976f3; }
+    #skuLinksPanel .skl-table-wrap tr.skl-expand-row > td.skl-expand-cell { padding: 0 0 14px 0; height: auto; background: #fbfdff; border-right: 0; border-bottom: 1px solid #eef2f8; white-space: normal; }
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; border: 1px solid #e3ebf7; font-size: 13px; }
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner th { position: static; height: auto; padding: 8px 12px; background: #f7faff; color: #4a5a70; font-size: 12.5px; font-weight: 600; text-align: left; white-space: nowrap; border-bottom: 1px solid #e3ebf7; border-right: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner th:last-child { border-right: 0; }
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner td { height: auto; padding: 8px 12px; white-space: normal; word-break: normal; overflow-wrap: anywhere; border-bottom: 1px solid #eef2f8; border-right: 1px solid #f4f7fb; }
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner td:last-child { border-right: 0; }
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner tr:last-child td { border-bottom: 0; }
+    /* 【task-10】三列按比例分配整行宽度：商品SKU 22% / 数量 10% / 产品名称 余下 68%
+       （table-layout:fixed 下宽度由首行 th 决定，所以 th 也带同样的 class；数量列表头/单元格都居中） */
+    #skuLinksPanel .skl-table-wrap table.skl-expand-inner th.skl-expand-qty, #skuLinksPanel .skl-table-wrap table.skl-expand-inner td.skl-expand-qty { text-align: center; }
+    #skuLinksPanel .skl-expand-sku { width: 22%; }
+    #skuLinksPanel .skl-expand-qty { width: 10%; }
+    #skuLinksPanel .skl-expand-name { width: 68%; }
+    #skuLinksPanel .skl-expand-hint { margin-top: 6px; color: #8a99ad; font-size: 12px; }
+    /* 新增弹窗 */
+    #skuLinksPanel .skl-modal-mask { position: fixed; inset: 0; background: rgba(15, 26, 45, 0.35); display: flex; align-items: center; justify-content: center; z-index: 60; }
+    #skuLinksPanel .skl-modal-mask.hidden { display: none; }
+    #skuLinksPanel .skl-modal { width: min(1100px, 94vw); margin: 0; background: #fff; border-radius: 12px; box-shadow: 0 18px 48px rgba(16, 34, 64, 0.22); overflow: hidden; }
+    #skuLinksPanel .skl-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-modal-head h3 { margin: 0; font-size: 17px; font-weight: 600; color: #1f2b3b; }
+    #skuLinksPanel .skl-modal-close { border: 0; background: transparent; font-size: 20px; line-height: 1; color: #7b8aa1; cursor: pointer; }
+    #skuLinksPanel .skl-modal-body { padding: 18px 20px 4px; }
+    #skuLinksPanel .skl-modal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 34px; margin-bottom: 16px; }
+    #skuLinksPanel .skl-modal-field { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #1f2b3b; }
+    #skuLinksPanel .skl-modal-field .lbl { white-space: nowrap; }
+    #skuLinksPanel .skl-modal-field .req { color: #e03a3a; font-weight: 700; }
+    #skuLinksPanel .skl-modal-field input[type=text], #skuLinksPanel .skl-modal-field select { height: 34px; min-width: 210px; }
+    #skuLinksPanel .skl-radio { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; font-size: 13px; color: #1f2b3b; }
+    #skuLinksPanel .skl-modal-table { width: 100%; border-collapse: collapse; border: 1px solid #eef2f8; font-size: 13px; }
+    #skuLinksPanel .skl-modal-table th { background: #fafcff; color: #4a5a70; font-weight: 600; padding: 12px; border: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-modal-table td { padding: 12px; border: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-modal-table input { width: 100%; height: 34px; }
+    #skuLinksPanel .skl-modal-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px 20px; }
+    #skuLinksPanel .skl-btn.danger { background: #ef3b3b; border-color: #ef3b3b; color: #fff; }
+    #skuLinksPanel .skl-btn.danger:hover { background: #d92f2f; }
+    /* 页面级提示（新增成功 / 删除结果 / 列表加载失败等） */
+    #skuLinksPanel .skl-page-msg { margin: 12px 0 0; padding: 9px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+    #skuLinksPanel .skl-page-msg.ok { background: #eaf7ee; border: 1px solid #bfe6cc; color: #1c7c3c; }
+    #skuLinksPanel .skl-page-msg.err { background: #fdeeee; border: 1px solid #f3c6c6; color: #c62f2f; }
+    /* 弹窗内提示（校验 / 409 / 403 等，红色文字，不用 alert） */
+    #skuLinksPanel .skl-modal-msg { margin: 10px 0 0; color: #e03a3a; font-size: 13px; line-height: 1.5; min-height: 18px; }
+    #skuLinksPanel .skl-modal-msg.hidden { display: none; }
+    /* 【task-11】新增成功后的绑定信息：显示在新增弹窗内部（绑定表单下方、底部按钮上方） */
+    #skuLinksPanel .skl-add-binding-info { margin: 12px 0 2px; padding: 10px 14px; border-radius: 10px; background: #eaf7ee; border: 1px solid #bfe6cc; color: #1c7c3c; font-size: 13px; line-height: 1.6; word-break: break-all; }
+    #skuLinksPanel .skl-add-binding-info.hidden { display: none; }
+    /* 【task-9】操作列：编辑 / 日志 两个蓝色文字链接（【task-10】② 解绑已移除，改由顶部「删除」按钮承担） */
+    #skuLinksPanel .skl-action-links { display: inline-flex; align-items: center; gap: 12px; }
+    /* 【task-9】编辑弹窗（窄）/ 日志弹窗（中） */
+    #skuLinksPanel .skl-modal-narrow { width: min(760px, 94vw); }
+    #skuLinksPanel .skl-modal-log { width: min(1500px, 96vw); max-width: 96vw; flex: 0 0 auto; }
+    #skuLinksPanel .skl-readonly-text { font-size: 13px; color: #4a5a70; }
+    #skuLinksPanel .skl-field-hint { margin: 4px 0 0; color: #8a99ad; font-size: 12px; line-height: 1.6; }
+    #skuLinksPanel .skl-log-meta { margin: 0 0 10px; font-size: 13px; color: #4a5a70; }
+    #skuLinksPanel .skl-log-meta { display: none; }   /* 用户要求：顶部「当前绑定: …」不显示 */
+    #skuLinksPanel .skl-log-status { margin: 8px 0 0; color: #8a99ad; font-size: 12px; min-height: 16px; }
+    #skuLinksPanel .skl-log-table { width: 100%; min-width: 100%; border-collapse: collapse; border: 1px solid #eef2f8; font-size: 13px; }
+    #skuLinksPanel .skl-log-table th { position: static; background: #f7faff; color: #4a5a70; font-weight: 600; text-align: left; padding: 10px 12px; white-space: nowrap; border: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-log-table td { height: auto; padding: 10px 12px; color: #1f2b3b; white-space: nowrap; border: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-log-table td.skl-log-empty { text-align: center; color: #8a99ad; padding: 22px 0; }
+    #skuLinksPanel .skl-log-ok { color: #1c7c3c; }
+    #skuLinksPanel .skl-log-fail { color: #c62f2f; }
+    #skuLinksPanel .skl-log-note { margin: 10px 0 0; color: #8a99ad; font-size: 12px; line-height: 1.6; }
+    /* 【task-12】日志弹窗按参考图：列头居中、内容列最宽且两行、底部客户端分页条 */
+    #skuLinksPanel .skl-log-table { table-layout: fixed; }
+    #skuLinksPanel .skl-log-table th { text-align: center; }
+    #skuLinksPanel .skl-log-table td { vertical-align: top; }
+    #skuLinksPanel .skl-log-table td.skl-log-cell-seq { text-align: center; color: #4a5a70; }
+    #skuLinksPanel .skl-log-table td.skl-log-cell-content { white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+    #skuLinksPanel .skl-log-line1 { color: #1f2b3b; }
+    #skuLinksPanel .skl-log-line2 { margin-top: 3px; color: #6b7c93; font-size: 12.5px; line-height: 1.5; }
+    #skuLinksPanel .skl-log-table td.skl-log-cell-actor { text-align: center; }
+    #skuLinksPanel .skl-log-table td.skl-log-cell-time { text-align: center; color: #4a5a70; white-space: nowrap; }
+    #skuLinksPanel .skl-log-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; font-size: 13px; color: #4a5a70; }
+    #skuLinksPanel .skl-log-pager .skl-log-total { margin-right: 2px; }
+    #skuLinksPanel .skl-log-pagesize { flex: 0 0 auto; width: auto; min-width: 92px; height: 30px; padding: 0 6px; border: 1px solid #d9e3f0; border-radius: 6px; background: #fff; color: #1f2b3b; font-size: 13px; }
+    #skuLinksPanel .skl-log-pagebtn { min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid #d9e3f0; border-radius: 6px; background: #fff; color: #1f2b3b; cursor: pointer; font-size: 13px; }
+    #skuLinksPanel .skl-log-pagebtn:hover:not(:disabled) { border-color: #1976f3; color: #1976f3; }
+    #skuLinksPanel .skl-log-pagebtn:disabled { color: #b6c2d2; background: #f7f9fc; cursor: not-allowed; }
+    #skuLinksPanel .skl-log-pages { display: inline-flex; align-items: center; gap: 6px; }
+    #skuLinksPanel .skl-log-pagenum { min-width: 30px; height: 30px; padding: 0 6px; border: 1px solid #d9e3f0; border-radius: 6px; background: #fff; color: #1f2b3b; cursor: pointer; font-size: 13px; }
+    #skuLinksPanel .skl-log-pagenum:hover { border-color: #1976f3; color: #1976f3; }
+    #skuLinksPanel .skl-log-pagenum.active { background: #1976f3; border-color: #1976f3; color: #fff; font-weight: 600; }
+    #skuLinksPanel .skl-log-pagegap { color: #8a99ad; padding: 0 2px; }
+    #skuLinksPanel .skl-log-jump { display: inline-flex; align-items: center; gap: 4px; }
+    #skuLinksPanel .skl-log-jumpinput { width: 58px; height: 30px; padding: 0 6px; border: 1px solid #d9e3f0; border-radius: 6px; font-size: 13px; color: #1f2b3b; }
+    /* 【task-18】导入弹窗（照参考图） */
+    /* 【task-23】弹窗限高 + 标题/× 常驻可见 + 内容区内部滚动（只作用于导入弹窗，其它弹窗不受影响） */
+    #skuLinksPanel .skl-modal-import { width: min(1180px, 96vw); max-height: min(86vh, 940px); display: flex; flex-direction: column; }
+    #skuLinksPanel .skl-modal-import > .skl-modal-head { flex: 0 0 auto; }
+    #skuLinksPanel .skl-modal-import > .skl-modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+    #skuLinksPanel .skl-modal-import > .skl-modal-foot { flex: 0 0 auto; padding-top: 12px; }
+    #skuLinksPanel .skl-import-modes { display: flex; align-items: center; gap: 26px; margin: 2px 0 14px; font-size: 14px; color: #1f2b3b; }
+    #skuLinksPanel .skl-import-mode { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    #skuLinksPanel .skl-import-mode input { width: 15px; height: 15px; accent-color: #1976f3; cursor: pointer; }
+    #skuLinksPanel .skl-import-mode input:checked + span { color: #1976f3; font-weight: 600; }
+    #skuLinksPanel .skl-import-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    #skuLinksPanel .skl-import-step { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f8fbff; border: 1px solid #e6ecf5; border-radius: 12px; }
+    #skuLinksPanel .skl-import-step-label { font-size: 14px; font-weight: 600; color: #1f2b3b; white-space: nowrap; }
+    #skuLinksPanel .skl-import-file { display: none; }
+    #skuLinksPanel .skl-import-hint { margin: 10px 0 0; text-align: right; color: #e54545; font-size: 13px; }
+    #skuLinksPanel .skl-import-msg { margin: 8px 0 0; font-size: 13px; line-height: 1.6; padding: 8px 12px; border-radius: 10px; }
+    #skuLinksPanel .skl-import-msg.ok { background: #eaf7ee; border: 1px solid #bfe6cc; color: #1c7c3c; }
+    #skuLinksPanel .skl-import-msg.err { background: #fdeeee; border: 1px solid #f3c6c6; color: #c62f2f; }
+    #skuLinksPanel .skl-import-msg.hidden { display: none; }
+    #skuLinksPanel .skl-import-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin: 14px 0 12px; padding: 14px 16px; background: #fff; border: 1px solid #e6ecf5; border-radius: 12px; }
+    #skuLinksPanel .skl-import-filter .skl-field { flex: 0 1 280px; }
+    #skuLinksPanel .skl-import-filter .skl-field input { width: 100%; }
+    #skuLinksPanel .skl-import-range { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #1f2b3b; }
+    #skuLinksPanel .skl-import-range input { height: 34px; width: 150px; }
+    #skuLinksPanel .skl-import-tilde { color: #8a99ad; }
+    #skuLinksPanel .skl-import-table-wrap { overflow-x: auto; border: 1px solid #e6ecf5; border-radius: 12px; }
+    #skuLinksPanel .skl-import-table { width: 100%; min-width: 1040px; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    #skuLinksPanel .skl-import-table th { position: static; background: #f7faff; color: #4a5a70; font-weight: 600; text-align: center; padding: 10px 12px; white-space: nowrap; border-bottom: 1px solid #eef2f8; border-right: 1px solid #eef2f8; }
+    #skuLinksPanel .skl-import-table th:last-child { border-right: 0; }
+    #skuLinksPanel .skl-import-table td { height: auto; padding: 10px 12px; color: #1f2b3b; vertical-align: middle; border-bottom: 1px solid #eef2f8; border-right: 1px solid #f4f7fb; overflow-wrap: anywhere; }
+    #skuLinksPanel .skl-import-table td:last-child { border-right: 0; }
+    #skuLinksPanel .skl-import-table td.skl-import-empty { text-align: center; color: #8a99ad; padding: 26px 0; }
+    /* 【task-23】③ 文件名 + 「展开」同一行不换行；文件名过长省略号 + title 看全名 */
+    #skuLinksPanel .skl-import-name { display: flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; flex-wrap: nowrap; }
+    #skuLinksPanel .skl-import-name-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #skuLinksPanel .skl-import-name .skl-import-link { flex: 0 0 auto; white-space: nowrap; }
+    /* 【task-23】② 失败原因列：单元格限高 + 内部滚动 + title 看全文 */
+    #skuLinksPanel .skl-import-table td.skl-import-reason-cell { padding: 8px 10px; vertical-align: top; }
+    #skuLinksPanel .skl-import-reason { max-height: 96px; overflow-y: auto; overflow-x: hidden; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+    /* 【task-23】避免进度圆环里的「100%」与操作列两个链接被窄列折行 */
+    #skuLinksPanel .skl-import-ring { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    #skuLinksPanel .skl-import-table td.skl-import-ring-cell { white-space: nowrap; }
+    #skuLinksPanel .skl-import-table td.skl-import-action-cell { white-space: nowrap; }
+    /* 【task-24】② 「跳过」列；③ 每个时间戳自身不折行；窄列加 nowrap 防止「admin2」「处理成功」被折行 */
+    #skuLinksPanel .skl-import-table td.skl-import-skip-cell { white-space: nowrap; color: #4a5a70; }
+    #skuLinksPanel .skl-import-table td.skl-import-user-cell { white-space: nowrap; }
+    #skuLinksPanel .skl-import-table td.skl-import-status-cell { white-space: nowrap; }
+    #skuLinksPanel .skl-import-table td.skl-import-times-cell { padding-left: 8px; padding-right: 8px; }   /* 给时间戳留够内容宽度 */
+    #skuLinksPanel .skl-import-times div { white-space: nowrap; }
+    #skuLinksPanel .skl-import-times { line-height: 1.5; color: #4a5a70; font-size: 12.5px; }
+    #skuLinksPanel .skl-import-link { color: #1976f3; text-decoration: none; cursor: pointer; }
+    #skuLinksPanel .skl-import-link:hover { text-decoration: underline; }
+    /* 【task-19】状态颜色：处理中=蓝 / 处理成功=绿 / 处理失败=红 */
+    #skuLinksPanel .skl-import-status-doing { color: #1976f3; }
+    #skuLinksPanel .skl-import-status-ok { color: #1c7c3c; }
+    #skuLinksPanel .skl-import-status-fail { color: #c62f2f; }
+    /* 【task-20】第三种状态「部分成功」=橙；失败明细展开行；操作列的删除链接 */
+    #skuLinksPanel .skl-import-status-partial { color: #d9822b; }
+    #skuLinksPanel .skl-import-table tr.skl-import-detail-row > td.skl-import-detail-cell { padding: 10px 16px 12px 32px; background: #fbfdff; color: #6b7c93; font-size: 12.5px; line-height: 1.7; white-space: normal; word-break: break-word; border-right: 0; }
+    #skuLinksPanel td.skl-cell-center .skl-import-del { margin-left: 12px; color: #c62f2f; }
+    #skuLinksPanel td.skl-cell-center .skl-import-del[data-confirm="1"] { font-weight: 600; text-decoration: underline; }
+    /* 【task-22】重复跳过是中性信息，不用红色报错口吻 */
+    #skuLinksPanel .skl-import-skip-note { color: #8a99ad; }
+    /* 【task-28】导出弹窗：限高 + 标题常驻 + 内容区内部滚动（结构照导入弹窗）；内部复用 skl-import-* 样式 */
+    #skuLinksPanel .skl-modal-export { width: min(1180px, 96vw); max-height: min(86vh, 940px); display: flex; flex-direction: column; }
+    #skuLinksPanel .skl-modal-export > .skl-modal-head { flex: 0 0 auto; }
+    #skuLinksPanel .skl-modal-export > .skl-modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+    #skuLinksPanel .skl-modal-export > .skl-modal-foot { flex: 0 0 auto; padding-top: 12px; }
+    #skuLinksPanel .skl-export-create { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 14px; }
+    #skuLinksPanel .skl-export-create .skl-modal-field input[type=text] { min-width: 320px; }
+    #skuLinksPanel .skl-export-divider { height: 1px; background: #eef2f8; margin: 4px 0 14px; }
+    /* 7 列（无「跳过」列）：失败原因仍是最宽列，时间戳单行；操作列要放「点击下载文件 + 删除/确认删除」两个链接，给足宽度不被裁切 */
+    #skuLinksPanel .skl-export-table { min-width: 1020px; }
+  </style>
+
+  <div class="panel-head">
+    <h3>SKU关系管理</h3>
+  </div>
+
+  <div class="skl-filter">
+    <label class="skl-field"><span>店铺SKU</span><input id="sklFilterPlatformSku" type="text" placeholder="请输入店铺SKU" /></label>
+    <label class="skl-field"><span>商品SKU</span><input id="sklFilterWarehouseSku" type="text" placeholder="请输入商品SKU" /></label>
+    <label class="skl-field"><span>是否为组合SKU</span><select id="sklFilterBundle"><option value="">请选择</option><option value="0">单个SKU</option><option value="1">组合SKU</option></select></label>
+    <label class="skl-field"><span>创建人</span><select id="sklFilterCreator"><option value="">请选择创建人</option></select></label>
+    <label class="skl-field"><span>销售平台</span><select id="sklFilterProvider"><option value="">请选择平台</option><option value="yandex">Yandex</option><option value="ozon">Ozon</option></select></label>
+    <label class="skl-field"><span>店铺账户</span><select id="sklFilterShop"><option value="">全部店铺</option></select></label>
+    <div class="skl-row-actions">
+      <button type="button" id="sklSearchBtn" class="skl-btn primary">搜索</button>
+      <button type="button" id="sklResetBtn" class="skl-btn">重置</button>
+    </div>
+    <div class="skl-row-actions" style="margin-top:10px;">
+      <button type="button" id="sklAddBtn" class="skl-btn primary">新增</button>
+      <button type="button" id="sklDeleteBtn" class="skl-btn primary">删除</button>
+      <button type="button" id="sklExportBtn" class="skl-btn primary">导出</button>
+      <button type="button" id="sklImportBtn" class="skl-btn primary">导入</button>
+    </div>
+  </div>
+
+  <!-- 页面级提示：新增成功 / 删除结果 / 列表加载失败 -->
+  <div id="sklPageMsg" class="skl-page-msg hidden"></div>
+
+  <div class="skl-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <!-- 【task-10】④ 父表去掉「商品SKU」列（展开的子表里保留）：7 列 = 复选框/店铺SKU/产品名称/店铺账户/是否为组合SKU/组合信息/操作 -->
+          <th style="width:36px;"><input type="checkbox" id="sklSelectAll" /></th>
+          <th>店铺SKU</th>
+          <th>产品名称</th>
+          <th>店铺账户</th>
+          <th>是否为组合SKU</th>
+          <th>组合信息</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="skuLinksTableBody">
+        <tr><td class="skl-empty" colspan="7">暂无数据</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 新增弹窗（布局参照产品库风格；标签用本页口径） -->
+  <div id="sklAddModalMask" class="skl-modal-mask hidden">
+    <div class="skl-modal" role="dialog" aria-modal="true" aria-labelledby="sklAddModalTitle">
+      <div class="skl-modal-head">
+        <h3 id="sklAddModalTitle">新增</h3>
+        <button type="button" id="sklAddModalClose" class="skl-modal-close" aria-label="关闭">×</button>
+      </div>
+      <div class="skl-modal-body">
+        <div class="skl-modal-row">
+          <label class="skl-modal-field"><span class="req">*</span><span class="lbl">店铺SKU</span><input id="sklAddShopSku" type="text" placeholder="请输入店铺SKU" /></label>
+          <label class="skl-modal-field"><span class="req">*</span><span class="lbl">销售平台</span><select id="sklAddProvider"><option value="">请选择平台</option><option value="yandex">Yandex</option><option value="ozon">Ozon</option></select></label>
+          <label class="skl-modal-field"><span class="lbl">店铺账户</span><select id="sklAddShop"><option value="">全部店铺</option></select></label>
+        </div>
+        <div class="skl-modal-row">
+          <span class="skl-modal-field"><span class="req">*</span><span class="lbl">是否组合</span>
+            <label class="skl-radio"><input type="radio" name="sklAddBundle" value="0" checked /> 否</label>
+            <label class="skl-radio"><input type="radio" name="sklAddBundle" value="1" /> 是</label>
+          </span>
+        </div>
+        <table class="skl-modal-table">
+          <thead><tr><th>商品SKU</th><th>产品名</th><th>数量</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><input id="sklAddItemSku" type="text" placeholder="请输入商品SKU" /></td>
+              <td><input id="sklAddItemName" type="text" placeholder="产品名" /></td>
+              <td><input id="sklAddItemQty" type="number" min="1" value="1" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <div id="sklAddModalMsg" class="skl-modal-msg hidden"></div>
+        <!-- 【task-11】新增成功后的绑定信息（商品SKU / 店铺SKU / 绑定 id / 创建人），在底部按钮上方 -->
+        <div id="sklAddBindingInfo" class="skl-add-binding-info hidden"></div>
+      </div>
+      <div class="skl-modal-foot">
+        <button type="button" id="sklAddCancel" class="skl-btn danger">取消</button>
+        <button type="button" id="sklAddConfirm" class="skl-btn primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 【task-9】编辑弹窗。后端只有 POST(新建)/DELETE(删除)、没有 PATCH：
+       改「绑定的另一方」= 先 POST 建新的，201 成功后再 DELETE 旧的；失败一律不碰旧记录。
+       备注只读并明确告知「备注暂不支持修改」，不做「删了再建」。 -->
+  <div id="sklEditModalMask" class="skl-modal-mask hidden">
+    <div class="skl-modal skl-modal-narrow" role="dialog" aria-modal="true" aria-labelledby="sklEditModalTitle">
+      <div class="skl-modal-head">
+        <h3 id="sklEditModalTitle">编辑绑定</h3>
+        <button type="button" id="sklEditModalClose" class="skl-modal-close" aria-label="关闭">×</button>
+      </div>
+      <div class="skl-modal-body">
+        <div class="skl-modal-row">
+          <label class="skl-modal-field"><span class="req">*</span><span class="lbl">店铺SKU</span><input id="sklEditShopSku" type="text" placeholder="请输入店铺SKU" /></label>
+          <label class="skl-modal-field"><span class="req">*</span><span class="lbl">商品SKU</span><input id="sklEditItemSku" type="text" placeholder="请输入商品SKU" /></label>
+        </div>
+        <div class="skl-modal-row">
+          <span class="skl-modal-field"><span class="lbl">销售平台</span><span id="sklEditProviderText" class="skl-readonly-text">-</span></span>
+          <span class="skl-modal-field"><span class="lbl">店铺账户</span><span id="sklEditShopText" class="skl-readonly-text">-</span></span>
+        </div>
+        <div class="skl-modal-row">
+          <label class="skl-modal-field"><span class="lbl">备注</span><input id="sklEditNote" type="text" readonly title="备注暂不支持修改" /></label>
+        </div>
+        <p class="skl-field-hint">
+          备注暂不支持修改：后端没有修改接口，为避免「删了再建」造成数据短暂丢失，这里的备注固定为原值。<br />
+          改动店铺SKU / 商品SKU 时按「先创建新绑定、成功后再删除旧记录」执行；创建失败时旧记录保持不动。
+        </p>
+        <div id="sklEditModalMsg" class="skl-modal-msg hidden"></div>
+      </div>
+      <div class="skl-modal-foot">
+        <button type="button" id="sklEditCancel" class="skl-btn danger">取消</button>
+        <button type="button" id="sklEditConfirm" class="skl-btn primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 【task-9】日志弹窗：该条绑定的审计历史。数据来自 GET /api/audit-logs?path=/api/pdev-links，
+       客户端按 resourceType='pdev_link' + resourceId=<绑定 id> 过滤（后端无 resourceId 过滤参数）。 -->
+  <div id="sklLogModalMask" class="skl-modal-mask hidden">
+    <div class="skl-modal skl-modal-log" role="dialog" aria-modal="true" aria-labelledby="sklLogModalTitle">
+      <div class="skl-modal-head">
+        <h3 id="sklLogModalTitle">操作日志</h3>
+        <button type="button" id="sklLogModalClose" class="skl-modal-close" aria-label="关闭">×</button>
+      </div>
+      <div class="skl-modal-body">
+        <p id="sklLogMeta" class="skl-log-meta"></p>
+        <table class="skl-log-table">
+          <colgroup>
+            <col style="width:56px;" />
+            <col style="width:58%;" />
+            <col style="width:16%;" />
+            <col style="width:26%;" />
+          </colgroup>
+          <thead>
+            <tr><th>#</th><th>内容</th><th>操作人名称</th><th>创建时间</th></tr>
+          </thead>
+          <tbody id="sklLogTableBody"></tbody>
+        </table>
+        <!-- 【task-12】底部客户端分页条（数据已整批拉到前端，翻页只重渲染表格） -->
+        <div class="skl-log-pager">
+          <span id="sklLogTotal" class="skl-log-total">共 0 条</span>
+          <select id="sklLogPageSize" class="skl-log-pagesize" aria-label="每页条数">
+            <option value="10" selected>10条/页</option>
+            <option value="20">20条/页</option>
+            <option value="50">50条/页</option>
+          </select>
+          <button type="button" id="sklLogPrev" class="skl-log-pagebtn" aria-label="上一页">&lt;</button>
+          <span id="sklLogPages" class="skl-log-pages"></span>
+          <button type="button" id="sklLogNext" class="skl-log-pagebtn" aria-label="下一页">&gt;</button>
+          <span class="skl-log-jump">前往 <input id="sklLogJump" class="skl-log-jumpinput" type="number" min="1" value="1" aria-label="前往页码" /> 页</span>
+        </div>
+        <div id="sklLogStatus" class="skl-log-status"></div>
+        <p id="sklLogHint" class="skl-log-note"></p>
+      </div>
+      <div class="skl-modal-foot">
+        <button type="button" id="sklLogClose" class="skl-btn primary">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 【task-18】导入弹窗（照参考图：三模式 + 步骤1/2 + 红字提示 + 筛选行 + 历史表格 + 分页条）
+       本阶段表格只渲染空态：历史记录需要后端记账（第二阶段）。 -->
+  <div id="sklImportModalMask" class="skl-modal-mask hidden">
+    <div class="skl-modal skl-modal-import" role="dialog" aria-modal="true" aria-labelledby="sklImportModalTitle">
+      <div class="skl-modal-head">
+        <h3 id="sklImportModalTitle">导入</h3>
+        <button type="button" id="sklImportModalClose" class="skl-modal-close" aria-label="关闭">×</button>
+      </div>
+      <div class="skl-modal-body">
+        <div class="skl-import-modes" id="sklImportModes">
+          <label class="skl-import-mode"><input type="radio" name="sklImportMode" value="single" checked /><span>单品映射</span></label>
+          <label class="skl-import-mode"><input type="radio" name="sklImportMode" value="systemCombo" /><span>系统组合映射</span></label>
+          <label class="skl-import-mode"><input type="radio" name="sklImportMode" value="selfCombo" /><span>自配对组合映射</span></label>
+        </div>
+        <div class="skl-import-steps">
+          <div class="skl-import-step">
+            <span class="skl-import-step-label">① 步骤1</span>
+            <button type="button" id="sklImportTemplateBtn" class="skl-btn primary">⬇ 下载模板</button>
+          </div>
+          <div class="skl-import-step">
+            <span class="skl-import-step-label">② 步骤2</span>
+            <button type="button" id="sklImportUploadBtn" class="skl-btn primary">⬆ 上传文件</button>
+            <input id="sklImportFileInput" class="skl-import-file" type="file" accept=".xlsx,.xls,.csv" />
+          </div>
+        </div>
+        <p class="skl-import-hint">按模板填写后上传（最大上传数量为5000条）</p>
+        <div id="sklImportMsg" class="skl-import-msg hidden"></div>
+
+        <div class="skl-import-filter">
+          <label class="skl-field"><span>文件名称</span><input id="sklImportFilterName" type="text" placeholder="请输入文件名称" /></label>
+          <span class="skl-import-range">
+            <span>创建时间</span>
+            <input id="sklImportFilterFrom" type="date" aria-label="创建时间开始" />
+            <span class="skl-import-tilde">~</span>
+            <input id="sklImportFilterTo" type="date" aria-label="创建时间结束" />
+          </span>
+          <button type="button" id="sklImportSearchBtn" class="skl-btn primary">搜索</button>
+          <button type="button" id="sklImportResetBtn" class="skl-btn danger">重置</button>
+        </div>
+
+        <div class="skl-import-table-wrap">
+          <table class="skl-import-table">
+            <!-- 【task-24】新增「跳过」列（第 5 列）→ 共 8 列；失败原因 25.5%（≈288px）、操作时间 18%（≈203px） -->
+            <colgroup>
+              <col style="width:18%;" />
+              <col style="width:6.5%;" />
+              <col style="width:7.5%;" />
+              <col style="width:7.5%;" />
+              <col style="width:4.5%;" />
+              <col style="width:25.5%;" />
+              <col style="width:18%;" />
+              <col style="width:12.5%;" />
+            </colgroup>
+            <thead>
+              <tr><th>文件名称</th><th>创建人</th><th>状态</th><th>进度</th><th>跳过</th><th>失败原因</th><th>操作时间</th><th>操作</th></tr>
+            </thead>
+            <tbody id="sklImportTableBody">
+              <tr><td class="skl-import-empty" colspan="8">暂无记录</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 分页条：复用日志弹窗的样式；没有历史数据时 0 条、按钮禁用 -->
+        <div class="skl-log-pager">
+          <span id="sklImportTotal" class="skl-log-total">共 0 条</span>
+          <select id="sklImportPageSize" class="skl-log-pagesize" aria-label="每页条数">
+            <option value="10" selected>10条/页</option>
+            <option value="20">20条/页</option>
+            <option value="50">50条/页</option>
+          </select>
+          <button type="button" id="sklImportPrev" class="skl-log-pagebtn" aria-label="上一页" disabled>&lt;</button>
+          <span id="sklImportPages" class="skl-log-pages"><button type="button" class="skl-log-pagenum active" data-skl-import-page="1">1</button></span>
+          <button type="button" id="sklImportNext" class="skl-log-pagebtn" aria-label="下一页" disabled>&gt;</button>
+          <span class="skl-log-jump">前往 <input id="sklImportJump" class="skl-log-jumpinput" type="number" min="1" value="1" aria-label="前往页码" /> 页</span>
+        </div>
+      </div>
+      <div class="skl-modal-foot">
+        <button type="button" id="sklImportClose" class="skl-btn primary">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 【task-28】导出弹窗（照参考图：标题 + 必填文件名称 + 导出按钮 + 分隔线 + 筛选行 + 7 列历史表 + 分页条）
+       内部复用导入弹窗那套样式类（skl-import-filter / skl-import-table / skl-import-reason / skl-import-times / skl-log-pager） -->
+  <div id="sklExportModalMask" class="skl-modal-mask hidden">
+    <div class="skl-modal skl-modal-export" role="dialog" aria-modal="true" aria-labelledby="sklExportModalTitle">
+      <div class="skl-modal-head">
+        <h3 id="sklExportModalTitle">SKU关系管理导出</h3>
+        <button type="button" id="sklExportModalClose" class="skl-modal-close" aria-label="关闭">×</button>
+      </div>
+      <div class="skl-modal-body">
+        <div class="skl-export-create">
+          <label class="skl-modal-field"><span class="req">*</span><span class="lbl">文件名称</span><input id="sklExportFileName" type="text" placeholder="请输入" /></label>
+          <button type="button" id="sklExportRunBtn" class="skl-btn primary">导出</button>
+        </div>
+        <div class="skl-export-divider"></div>
+        <div id="sklExportMsg" class="skl-import-msg hidden"></div>
+
+        <div class="skl-import-filter">
+          <label class="skl-field"><span>文件名称</span><input id="sklExportFilterName" type="text" placeholder="请输入文件名称" /></label>
+          <span class="skl-import-range">
+            <span>创建时间</span>
+            <input id="sklExportFilterFrom" type="date" aria-label="创建时间开始" />
+            <span class="skl-import-tilde">~</span>
+            <input id="sklExportFilterTo" type="date" aria-label="创建时间结束" />
+          </span>
+          <button type="button" id="sklExportSearchBtn" class="skl-btn primary">筛选</button>
+          <button type="button" id="sklExportResetBtn" class="skl-btn danger">重置</button>
+        </div>
+
+        <div class="skl-import-table-wrap">
+          <table class="skl-import-table skl-export-table">
+            <colgroup>
+              <col style="width:20%;" />
+              <col style="width:8%;" />
+              <col style="width:9%;" />
+              <col style="width:9%;" />
+              <col style="width:20%;" />
+              <col style="width:18%;" />
+              <col style="width:16%;" />
+            </colgroup>
+            <thead>
+              <tr><th>文件名称</th><th>创建人</th><th>状态</th><th>进度</th><th>失败原因</th><th>操作时间</th><th>操作</th></tr>
+            </thead>
+            <tbody id="sklExportTableBody">
+              <tr><td class="skl-import-empty" colspan="7">暂无记录</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="skl-log-pager">
+          <span id="sklExportTotal" class="skl-log-total">共 0 条</span>
+          <select id="sklExportPageSize" class="skl-log-pagesize" aria-label="每页条数">
+            <option value="10" selected>10条/页</option>
+            <option value="20">20条/页</option>
+            <option value="50">50条/页</option>
+          </select>
+          <button type="button" id="sklExportPrev" class="skl-log-pagebtn" aria-label="上一页" disabled>&lt;</button>
+          <span id="sklExportPages" class="skl-log-pages"><button type="button" class="skl-log-pagenum active" data-skl-export-page="1">1</button></span>
+          <button type="button" id="sklExportNext" class="skl-log-pagebtn" aria-label="下一页" disabled>&gt;</button>
+          <span class="skl-log-jump">前往 <input id="sklExportJump" class="skl-log-jumpinput" type="number" min="1" value="1" aria-label="前往页码" /> 页</span>
+        </div>
+      </div>
+      <div class="skl-modal-foot">
+        <button type="button" id="sklExportClose" class="skl-btn primary">关闭</button>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,1192 @@
+/* ============================================================================
+   产品开发库 · 面板样式
+   ----------------------------------------------------------------------------
+   作用域约定：除 .pdev-* 私有类外，所有选择器都以 #productDevPanel 限定，
+   不覆盖 base.css 与其他页面的任何全局样式。
+   ============================================================================ */
+
+#productDevPanel .pdev-head-copy {
+  max-width: 720px;
+}
+
+/* ---------- 搜索栏：系统SKU / 标题 / 价格 ---------- */
+#productDevPanel .pdev-search-bar {
+  display: grid;
+  grid-template-columns: minmax(230px, 280px) minmax(230px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: #f6f9ff;
+  border: 1px solid #dbe6f5;
+  border-radius: 14px;
+}
+
+/* 搜索格「框内前缀」样式（商品SKU / 标题）：整格看起来就是一个输入框，
+   左侧嵌入字段名与匹配方式；与参考系统一致。上方用一个等高的空白标签占用标签行，
+   好与「价格」那格对齐（不用 margin 魔法数字）。 */
+#productDevPanel .pdev-prefix-search {
+  display: flex;
+  align-items: stretch;
+  min-height: 34px;
+  border: 1px solid #c3d2e7;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#productDevPanel .pdev-prefix-search .pdev-prefix-mode {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 122px;
+  height: auto;
+  min-height: 0;
+  padding: 0 6px;
+  border: none;
+  border-right: 1px solid #e4ebf6;
+  border-radius: 0;
+  background: #f7faff;
+  color: #2b4365;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+#productDevPanel .pdev-prefix-search input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#productDevPanel .pdev-search-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 2px;
+}
+
+/* ---------- 搜索结果表格 ---------- */
+#productDevPanel .pdev-result-row {
+  cursor: pointer;
+}
+
+#productDevPanel .pdev-result-row:hover {
+  background: #f4f8ff;
+}
+
+#productDevPanel .pdev-result-row.active {
+  background: #eaf1ff;
+}
+
+#productDevPanel .pdev-cell-title {
+  min-width: 260px;
+}
+
+#productDevPanel .pdev-empty-cell {
+  padding: 18px 12px;
+  color: #6b7c93;
+  text-align: center;
+}
+
+#productDevPanel .pdev-cell-sku {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+#productDevPanel .pdev-cell-gaps {
+  min-width: 140px;
+}
+
+/* 「状态标签」列的三个状态标签 */
+#productDevPanel .pdev-cell-tags {
+  min-width: 190px;
+  white-space: normal;
+}
+
+#productDevPanel .pdev-tag {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+#productDevPanel .pdev-tag-goods { background: #eef4ff; border-color: #d9e6fb; color: #2f6fd0; }
+#productDevPanel .pdev-tag-sales { background: #f3f0ff; border-color: #e2dcfb; color: #5b46c8; }
+#productDevPanel .pdev-tag-source { background: #eefaf1; border-color: #d3efd9; color: #1f6b3a; }
+#productDevPanel .pdev-tag.is-warn { background: #fff5ec; border-color: #f7ddc4; color: #b25c14; }
+#productDevPanel .pdev-tag.is-unknown { border-style: dashed; }
+
+/* 冻结「操作」列：表格横向滚动时，操作列始终贴右边可见。
+   要点：① position: sticky + right: 0；② 必须给**不透明背景**，否则下方单元格会透出来；
+   ③ 表头那格本身还带 base.css 的 sticky(top)，所以 z-index 要更高，否则会被数据行盖住。 */
+#productDevPanel .table-wrap thead th:last-child,
+#productDevPanel .table-wrap tbody td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: -8px 0 10px -8px rgba(47, 70, 99, 0.22);
+}
+
+#productDevPanel .table-wrap thead th:last-child {
+  z-index: 3;
+  background: linear-gradient(180deg, #eef4ff 0%, #e6eefb 100%);
+}
+
+#productDevPanel .table-wrap tbody tr:hover td:last-child {
+  background: #f8fbff;
+}
+
+/* 结果表整行对齐：
+   1) 所有单元格垂直居中 —— 原先 base.css 给 .online-products-table 设的是 vertical-align: top，
+      一旦某格内容换行（比如操作人 ID 太长），同一行其它格就贴在顶上，看着不齐；
+   2) 单元格一律不换行 —— 否则「时间」折成两行、「操作人」被切成 USR- / MLPGIM22- / D583 三段，
+      整行被撑高且参差不齐。需要换行的只有商品名称（下面单独放开）。
+   表格超宽时由 .table-wrap 横向滚动兜底，不会挤坏。 */
+#productDevPanel .table-wrap tbody td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+#productDevPanel .table-wrap tbody td .pdev-item-title {
+  white-space: normal;
+  font-weight: 400;   /* pdev-unify-weight：与其它数据一致，去掉加粗 */
+}
+
+/* 操作列（编辑 / 删除）：小号文字按钮。
+   注意 base.css 有全局 `button { height: 42px }` 且 hover 会上浮+投影，这里必须显式压掉，
+   否则表格里会出现两个又高又会跳的按钮。 */
+#productDevPanel .pdev-cell-actions {
+  min-width: 112px;
+  white-space: nowrap;
+}
+
+#productDevPanel .pdev-act {
+  height: 22px;
+  min-height: 0;
+  margin-right: 6px;
+  padding: 0 8px;
+  border: 1px solid #dbe6f5;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+#productDevPanel .pdev-act:last-child {
+  margin-right: 0;
+}
+
+#productDevPanel .pdev-act:hover,
+#productDevPanel .pdev-act:active {
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+#productDevPanel .pdev-act-edit {
+  color: #2f6fd0;
+  border-color: #cdddf5;
+}
+
+#productDevPanel .pdev-act-edit:hover {
+  background: #f2f7ff;
+  border-color: #2f6fd0;
+}
+
+#productDevPanel .pdev-act-delete {
+  color: #c0392b;
+  border-color: #f0d3d3;
+}
+
+#productDevPanel .pdev-act-delete:hover {
+  background: #fff6f6;
+  border-color: #c0392b;
+}
+
+#productDevPanel .pdev-act:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 只读角色（运营/客服/财务/超级管理员）在操作列看到的东西 */
+#productDevPanel .pdev-act-readonly {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 8px;
+  height: 22px;
+  line-height: 22px;
+  border: 1px dashed #d7dee9;
+  border-radius: 6px;
+  color: #8a99ad;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+#productDevPanel .pdev-act-log {
+  color: #2b4365;
+  border-color: #dbe6f5;
+}
+
+#productDevPanel .pdev-act-log:hover {
+  background: #f2f7ff;
+  border-color: #2f6fd0;
+  color: #2f6fd0;
+}
+
+/* 日志弹窗 */
+#productDevPanel .pdev-log-card {
+  width: min(1040px, calc(100vw - 48px));
+}
+
+#productDevPanel .pdev-log-body {
+  padding: 14px 18px 18px;
+}
+
+#productDevPanel .pdev-log-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #6b7c93;
+}
+
+#productDevPanel .pdev-log-table {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+#productDevPanel .pdev-log-table th,
+#productDevPanel .pdev-log-table td {
+  white-space: nowrap;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+#productDevPanel .pdev-log-table .pdev-log-note {
+  white-space: normal;
+  max-width: 320px;
+}
+
+/* 「修改内容」列：允许换行，是这张表里信息量最大的一列 */
+#productDevPanel .pdev-log-table .pdev-log-change {
+  white-space: normal;
+  min-width: 260px;
+  max-width: 420px;
+  color: #2b4365;
+}
+
+#productDevPanel .pdev-log-fail {
+  color: #a02020;
+  font-weight: 600;
+}
+
+/* 「商品SKU」链接：始终无下划线（含悬停），只靠颜色变化提示可点 */
+#productDevPanel .pdev-sku-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #2f6fd0;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+#productDevPanel .pdev-sku-link:hover,
+#productDevPanel .pdev-sku-link:focus-visible {
+  color: #1b4fa0;
+  text-decoration: none;
+}
+
+/* SKU 边上的「复制」图标组件。
+   图形取自 Lucide（https://lucide.dev，ISC 许可）的 copy / check，内联 SVG、stroke=currentColor，
+   因此颜色由这里的 CSS 控制，无需额外图片文件。 */
+#productDevPanel .pdev-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;            /* 覆盖 base.css 里全局 button 的 height: 42px */
+  min-height: 0;
+  margin-left: 6px;
+  padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: #8a99ad;
+  font: inherit;
+  box-shadow: none;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+#productDevPanel .pdev-copy-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+#productDevPanel .pdev-copy-icon.pdev-copy-check {
+  display: none;
+}
+
+/* 悬停：只变色，不要全局 button 的上浮/阴影 */
+#productDevPanel .pdev-copy-btn:hover,
+#productDevPanel .pdev-copy-btn:active {
+  transform: none;
+  filter: none;
+  box-shadow: none;
+  color: #2f6fd0;
+  background: #f2f7ff;
+  border-color: #dbe6f5;
+}
+
+/* 注意：:hover 的特异性(0,2,1)高于 .is-copied(0,2,0)，所以成功/失败态必须也覆盖 :hover，
+   否则「点完还悬停在按钮上时」看不到绿色对勾——而点完鼠标必然还在上面。 */
+#productDevPanel .pdev-copy-btn.is-copied,
+#productDevPanel .pdev-copy-btn.is-copied:hover {
+  transform: none;
+  color: #1f6b3a;
+  background: #f2fbf5;
+  border-color: #cfe7d5;
+}
+
+#productDevPanel .pdev-copy-btn.is-copied .pdev-copy-icon:not(.pdev-copy-check) {
+  display: none;
+}
+
+#productDevPanel .pdev-copy-btn.is-copied .pdev-copy-check {
+  display: block;
+}
+
+#productDevPanel .pdev-copy-btn.is-failed,
+#productDevPanel .pdev-copy-btn.is-failed:hover {
+  transform: none;
+  color: #a02020;
+  background: #fff6f6;
+  border-color: #f0d3d3;
+}
+
+/* 勾选框列（表头全选 + 每行一个）：必须与同一排文字对齐。
+   原因：.online-products-table 的 th/td 是 vertical-align: top，而复选框是 inline 元素、
+   默认按**基线**对齐（底边贴文字基线），于是看起来比文字低一截；单元格 18px/16px 的内边距
+   又让这一格明显偏宽，把「商品SKU」挤到右边。这里统一成垂直居中 + 收紧内边距。 */
+#productDevPanel .pdev-cell-check {
+  width: 48px;
+  padding: 18px 8px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 复选框：base.css 里有全局 `input, select { width: 100%; height: 44px; border-radius: 14px }`，
+   会把勾选框也撑成一个 44px 的大圆角方块；这里显式压回原生尺寸。 */
+#productDevPanel .pdev-cell-check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 3px;
+  box-shadow: none;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* 表头文字不换行：列多时避免某个标题折成两行、看着与同排其它标题不齐 */
+#productDevPanel .table-wrap thead th {
+  white-space: nowrap;
+}
+
+@media (max-width: 1280px) {
+  #productDevPanel .pdev-search-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* 面板头现在只有标题，不再使用 .catalog-head-eyebrow / .catalog-head-subtle。
+   注意：本面板用的是浅色 .panel-head（不是深色的 .catalog-panel-head），若将来把这两个类加回来，
+   必须像 collection-box / publish-records 那样做同名覆盖——base.css 里它们是给深色头配的近白字，
+   直接继承会在白卡片上几乎看不见。 */
+
+/* base.css 里 .message 默认色是 --danger（红）。本面板的加载/中性提示不该显示成报错色；
+   成功与失败由下面的 .is-ok / .is-error 覆盖（特异性更高，不受本规则影响）。 */
+#productDevPanel .message {
+  color: #2f3d63;
+}
+
+/* ---------- 演示数据（mock）角标：必须一眼看到，防止当成真实库 ---------- */
+#productDevPanel .pdev-mock-badge {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 2px dashed #d9534f;
+  border-radius: 14px;
+  background: repeating-linear-gradient(135deg, #fff5f5 0 14px, #ffecec 14px 28px);
+  color: #a02020;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+/* mock 模式下面板整体再给一圈警示描边 */
+#productDevPanel.is-mock {
+  outline: 2px dashed rgba(217, 83, 79, 0.55);
+  outline-offset: -6px;
+}
+
+#productDevPanel .pdev-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 后端未就绪提示（§11.3：允许降级展示，但必须提示数据不完整） */
+#productDevPanel .pdev-notice {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border: 1px solid #edd6a4;
+  border-left: 4px solid #d99b2b;
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #8a5a06;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* §11.4：服务端原始 message 只放在折叠的「技术详情」里，不直接展示 */
+#productDevPanel .pdev-tech {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7c93;
+}
+
+#productDevPanel .pdev-tech summary {
+  cursor: pointer;
+  color: #5b6b83;
+}
+
+#productDevPanel .pdev-tech code {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #f5f7fa;
+  border: 1px solid #e2e8f1;
+  color: #4a5b73;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#productDevPanel .pdev-detail-col {
+  min-width: 0;
+}
+
+#productDevPanel .pdev-field input,
+#productDevPanel .pdev-field select,
+#productDevPanel .pdev-field textarea {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #c3d2e7;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 13px;
+  color: #1f2b3b;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+#productDevPanel .pdev-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: #4a5b73;
+}
+
+#productDevPanel .pdev-field > span {
+  font-weight: 600;
+}
+
+#productDevPanel .pdev-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2b3b;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+#productDevPanel .pdev-public-id,
+#productDevPanel code {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  color: #35507a;
+  background: #f0f5ff;
+  border: 1px solid #dbe6f8;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* ---------- 缺什么标签 ---------- */
+#productDevPanel .pdev-gap-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid #f0c2c2;
+  background: #fff4f4;
+  color: #a83232;
+}
+
+#productDevPanel .pdev-gap-tag.is-unknown {
+  border-style: dashed;
+  border-color: #d6dae1;
+  background: #f6f7f9;
+  color: #6b7280;
+}
+
+#productDevPanel .pdev-gap-tag.is-clear {
+  border-color: #bfe0cb;
+  background: #f1fbf4;
+  color: #2f7a4f;
+}
+
+/* ---------- 状态徽标 ---------- */
+#productDevPanel .pdev-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid #cdd9ea;
+  background: #f3f7fd;
+  color: #35507a;
+  white-space: nowrap;
+}
+
+#productDevPanel .pdev-status-badge.s-new { border-color: #cdd9ea; background: #f1f6fd; color: #35507a; }
+#productDevPanel .pdev-status-badge.s-developing { border-color: #bcd4f5; background: #eaf3ff; color: #1f5fbf; }
+#productDevPanel .pdev-status-badge.s-info_ready { border-color: #b6e0c6; background: #edfaf2; color: #237a4b; }
+#productDevPanel .pdev-status-badge.s-finalized { border-color: #d8cdf2; background: #f5f1ff; color: #5b3fb0; }
+#productDevPanel .pdev-status-badge.s-archived { border-color: #d6dae1; background: #f4f5f7; color: #6b7280; }
+
+/* ---------- 详情 ---------- */
+#productDevPanel .pdev-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #d9e4f4;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+#productDevPanel .pdev-detail-head h4 {
+  margin: 6px 0 0;
+  font-size: 18px;
+  line-height: 1.3;
+  color: #1f2b3b;
+  word-break: break-word;
+}
+
+#productDevPanel .pdev-detail-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #6b7c93;
+}
+
+#productDevPanel .pdev-detail-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#productDevPanel .pdev-block {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #dbe5f2;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+#productDevPanel .pdev-block-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#productDevPanel .pdev-block-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2b3b;
+}
+
+#productDevPanel .pdev-block-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7c93;
+}
+
+#productDevPanel .pdev-flow-hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #5b6b83;
+  margin-bottom: 8px;
+}
+
+#productDevPanel .pdev-status-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#productDevPanel .pdev-status-actions button {
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+#productDevPanel .pdev-missing {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f0bcbc;
+  border-left: 4px solid #d9534f;
+  border-radius: 12px;
+  background: #fff6f6;
+  color: #8f2b2b;
+  font-size: 13px;
+}
+
+#productDevPanel .pdev-missing ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+#productDevPanel .pdev-missing li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+#productDevPanel .pdev-missing code {
+  margin-left: 6px;
+  background: #fdecec;
+  border-color: #f3c9c9;
+  color: #8f2b2b;
+}
+
+#productDevPanel .pdev-form,
+#productDevPanel .pdev-quick-add-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#productDevPanel .pdev-field-wide {
+  grid-column: span 2;
+}
+
+#productDevPanel .pdev-form .pdev-field-wide {
+  grid-column: span 3;
+}
+
+#productDevPanel .pdev-form-actions,
+#productDevPanel .pdev-quick-add-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#productDevPanel .pdev-form-actions button,
+#productDevPanel .pdev-quick-add-actions button {
+  padding: 8px 14px;
+  border-radius: 9px;
+}
+
+#productDevPanel .pdev-danger-btn {
+  background: linear-gradient(180deg, #fff6f6 0%, #fbe4e4 100%);
+  color: #a32b2b;
+  border: 1px solid #eab8b8;
+  border-radius: 9px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+#productDevPanel .pdev-danger-btn:hover {
+  background: linear-gradient(180deg, #ffefef 0%, #f7d8d8 100%);
+}
+
+#productDevPanel .pdev-quick-add {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed #c8d8ef;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfdff 0%, #f5f9ff 100%);
+}
+
+#productDevPanel .pdev-quick-add-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2f4663;
+  margin-bottom: 10px;
+}
+
+/* ---------- 货源：货源链接必须最显眼，和其它链接区分 ---------- */
+#productDevPanel .pdev-source-list,
+#productDevPanel .pdev-asset-list,
+#productDevPanel .pdev-variant-list {
+  display: grid;
+  gap: 10px;
+}
+
+#productDevPanel .pdev-source-row {
+  border: 1px solid #cfdcef;
+  border-left: 4px solid #2f67c8;
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+#productDevPanel .pdev-source-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #4a5b73;
+}
+
+#productDevPanel .pdev-source-platform {
+  font-weight: 700;
+  color: #1f5fbf;
+}
+
+#productDevPanel .pdev-source-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+#productDevPanel .pdev-source-link-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #f0d9a8;
+  border-radius: 12px;
+  background: #fffdf4;
+}
+
+#productDevPanel .pdev-source-link-field input {
+  border-color: #e8c982;
+  background: #fffef9;
+  font-weight: 600;
+}
+
+#productDevPanel .pdev-field-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#productDevPanel .pdev-field-label small {
+  font-weight: 500;
+  color: #8a7a53;
+}
+
+/* 人工填写 vs 其他链接：两套视觉语言 */
+#productDevPanel .pdev-manual-tag::before {
+  content: "人工";
+  font-size: 10px;
+  font-weight: 700;
+  color: #8a5a06;
+  background: #fdeec4;
+  border: 1px solid #eccb7c;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+#productDevPanel .pdev-auto-tag::before {
+  content: "其他链接";
+  font-size: 10px;
+  font-weight: 700;
+  color: #5b6b83;
+  background: #eef2f8;
+  border: 1px solid #d5dfec;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+#productDevPanel .pdev-auto-tag + input,
+#productDevPanel .pdev-field input[data-pdev-other-link] {
+  background: #fafbfd;
+  color: #55647a;
+}
+
+#productDevPanel .pdev-source-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+#productDevPanel .pdev-source-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#productDevPanel .pdev-source-actions button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+#productDevPanel .pdev-link {
+  font-size: 12px;
+  color: #1f5fbf;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+#productDevPanel .pdev-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 素材 / 变体行 ---------- */
+#productDevPanel .pdev-asset-row,
+#productDevPanel .pdev-variant-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid #e2e9f4;
+  border-radius: 12px;
+  background: #fcfdff;
+  font-size: 12px;
+  color: #4a5b73;
+}
+
+#productDevPanel .pdev-asset-row .pdev-auto-tag::before {
+  content: "其他链接";
+}
+
+#productDevPanel .pdev-asset-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #dbe5f2;
+  background: #f4f7fc;
+}
+
+#productDevPanel .pdev-variant-spec {
+  font-weight: 600;
+  color: #1f2b3b;
+}
+
+/* ---------- 分页 / 提示 ---------- */
+#productDevPanel .pdev-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #5b6b83;
+}
+
+#productDevPanel .pdev-pager button {
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+#productDevPanel .pdev-inline-msg {
+  font-size: 12px;
+  color: #6b7c93;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+#productDevPanel .pdev-inline-msg.is-ok,
+#productDevPanel .message.is-ok {
+  color: #1d6f3a;
+}
+
+#productDevPanel .pdev-inline-msg.is-error,
+#productDevPanel .message.is-error {
+  color: #c02030;
+}
+
+#productDevPanel .pdev-empty {
+  padding: 12px;
+  border: 1px dashed #d3dded;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #7b8aa0;
+  background: #fbfdff;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 860px) {
+  #productDevPanel .pdev-form,
+  #productDevPanel .pdev-quick-add-grid,
+  #productDevPanel .pdev-source-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #productDevPanel .pdev-form .pdev-field-wide,
+  #productDevPanel .pdev-field-wide {
+    grid-column: span 2;
+  }
+}
+
+/* 标签竖着排：一行一个（状态标签列 + 商品资料的缺口标签都适用）。
+   用 display:block + width:fit-content —— 只写 block 的话胶囊会被拉满整列宽度，很难看。 */
+#productDevPanel .pdev-cell-tags {
+  min-width: 120px;
+}
+
+#productDevPanel .pdev-cell-tags .pdev-tag {
+  display: block;
+  width: fit-content;
+  margin: 2px 0;
+}
+
+#productDevPanel .pdev-cell-gaps > * {
+  display: block;
+  width: fit-content;
+  margin: 2px 0;
+}
+
+/* 【操作人】列：创建人 / 更新人 各占一行 */
+#productDevPanel .pdev-who-line {
+  display: block;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+#productDevPanel .pdev-who-line:first-child {
+  color: #1f2b3b;
+}
+
+#productDevPanel .pdev-who-line + .pdev-who-line {
+  color: #6b7c93;
+}
+
+/* pdev-who-line-same-color：【操作人】列两行同色，不做深浅区分 */
+#productDevPanel .pdev-who-line,
+#productDevPanel .pdev-who-line:first-child,
+#productDevPanel .pdev-who-line + .pdev-who-line {
+  color: #1f2b3b;
+}
+
+/* 「商品资料」列：最新采购价 / 采购链接 / 参考链接，三行竖排 */
+#productDevPanel .pdev-cell-material {
+  min-width: 210px;
+  max-width: 300px;
+}
+
+#productDevPanel .pdev-mat-line {
+  display: block;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#productDevPanel .pdev-mat-link {
+  color: #2f6fd0;
+  text-decoration: none;
+}
+
+#productDevPanel .pdev-mat-link:hover {
+  color: #1b4fa0;
+  text-decoration: underline;
+}
+
+/* pdev-tag-black-text：状态标签文字统一黑色（含负向/未知两种变体）*/
+#productDevPanel .pdev-tag,
+#productDevPanel .pdev-tag-goods,
+#productDevPanel .pdev-tag-sales,
+#productDevPanel .pdev-tag-source,
+#productDevPanel .pdev-tag.is-warn,
+#productDevPanel .pdev-tag.is-unknown {
+  color: #1f2b3b;
+}
+
+/* pdev-tag-plain：状态标签=纯文字。不要框、不要底色、不按维度单独给样式（全部一致）*/
+#productDevPanel .pdev-tag,
+#productDevPanel .pdev-tag-goods,
+#productDevPanel .pdev-tag-sales,
+#productDevPanel .pdev-tag-source,
+#productDevPanel .pdev-tag.is-warn,
+#productDevPanel .pdev-tag.is-unknown {
+  color: #1f2b3b;
+  background: none;
+  border: none;
+  border-style: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* pdev-mat-plain：商品资料列与状态标签列观感完全一致（纯文字、黑色、无下划线、不单独给样式）*/
+#productDevPanel .pdev-mat-line,
+#productDevPanel .pdev-mat-link {
+  color: #1f2b3b;
+  font-size: 12px;
+  line-height: 1.7;
+  text-decoration: none;
+}
+
+#productDevPanel .pdev-mat-link:hover,
+#productDevPanel .pdev-mat-link:focus {
+  color: #1f2b3b;
+  text-decoration: none;
+}
+
+/* 仍可点：只靠光标提示，不用颜色 */
+#productDevPanel .pdev-mat-link {
+  cursor: pointer;
+}
+
+/* pdev-create-modal-fit：新建产品弹窗高度受限于视口，表单区自己滚动。
+   目的：100% 缩放下不再把「备注」和底部「创建/取消」切到屏幕外；标题栏的「取消」始终可见（随时能退出）。*/
+#pdevCreateModalMask .modal-card {
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+#pdevCreateModalMask .modal-head {
+  flex: none;
+}
+
+#pdevCreateModalMask .modal-form {
+  flex: 1 1 auto;
+  min-height: 0;      /* flex 子项必须能收缩，否则 overflow 不生效 */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* pdev-create-two-col：新建产品弹窗两列排布，不用上下滚动 */
+#pdevCreateModalMask .modal-card {
+  width: min(900px, calc(100vw - 48px));   /* 加宽以容纳两列 */
+}
+
+#pdevCreateModalMask .modal-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  align-content: start;
+}
+
+#pdevCreateModalMask .pdev-field-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 非成对元素（底部按钮区等）占整行 */
+#pdevCreateModalMask .modal-form > *:not(.pdev-field-pair) {
+  grid-column: 1 / -1;
+}
+
+/* 新建商品：商品SKU 输入框与「生成」按钮并排 */
+#pdevCreateModalMask .pdev-sku-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#pdevCreateModalMask .pdev-sku-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#pdevCreateModalMask .pdev-sku-row button {
+  flex: none;
+}
+
+/* 列表里的商品主图缩略图 */
+#productDevPanel .pdev-cell-image { min-width: 64px; }
+#productDevPanel .pdev-thumb {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e3eaf5;
+  background: #f7f9fc;
+  cursor: zoom-in;
+}
+
+/* pdev-unify-text：统一表格数据区的字体颜色与字号
+   例外：表头(th)、SKU 链接(.pdev-sku-link，保持蓝色)、操作列按钮(button) */
+#productDevPanel .table-wrap tbody td,
+#productDevPanel .table-wrap tbody td div,
+#productDevPanel .table-wrap tbody td span,
+#productDevPanel .table-wrap tbody td strong,
+#productDevPanel .table-wrap tbody td em {
+  font-size: 14px;
+  color: #1f2b3b;
+}
+/* SKU 链接：保持蓝色（唯一保留颜色的文本） */
+#productDevPanel .table-wrap tbody td a,
+#productDevPanel .table-wrap tbody td a * {
+  font-size: 14px;
+  color: #2563eb;
+}
+/* 操作列按钮：只统一字号，颜色样式全部保留（编辑/删除/日志各自的样子） */
+#productDevPanel .table-wrap tbody td button {
+  font-size: 13px;
+}
+/* 商品名称虽保留加粗，但字号与颜色与其它数据一致 */
+#productDevPanel .table-wrap tbody td .pdev-item-title {
+  font-size: 14px;
+  color: #1f2b3b;
+}
+
+/* pdev-nowrap-title：商品名称不换行（原来它是唯一允许折行的格，现与其它格一致） */
+#productDevPanel .table-wrap tbody td.pdev-cell-title,
+#productDevPanel .table-wrap tbody td .pdev-item-title {
+  white-space: nowrap;
+  word-break: keep-all;
+}

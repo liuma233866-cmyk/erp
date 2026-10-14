@@ -463,3 +463,16 @@
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
+
+/* pdev-est-wrap：预估利润块占满整行，容器必须允许换行，否则兄弟元素（订单状态）会被挤扁 */
+.order-customer-status {
+  flex-wrap: wrap;
+}
+.order-customer-status > .order-profit-estimate {
+  flex: 0 0 100%;
+  width: 100%;
+  order: -1;              /* 保证它在订单状态之前（上方） */
+}
+.order-customer-status > span {
+  flex: 0 0 auto;         /* 订单状态等元素不被压缩 */
+}

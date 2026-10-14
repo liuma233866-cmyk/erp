@@ -5,6 +5,7 @@ const PANEL_ROUTES = Object.freeze({
   productListPanel: "products",
   productOnlinePanel: "yandex-products",
   ozonProductPanel: "ozon-products",
+  skuLinksPanel: "sku-links",
   multiPlatformPublishPanel: "publish",
   collectionBoxPanel: "collection-box",
   publishRecordsPanel: "publish-records",
@@ -15,12 +16,14 @@ const PANEL_ROUTES = Object.freeze({
   apiPanel: "shops",
   messagesPanel: "messages",
   warehousePanel: "warehouse",
+  productDevPanel: "goods",
   systemPanel: "system",
   aiConfigPanel: "ai-config",
   aiImageTaskPanel: "ai-image-tasks",
   reviewRulesPanel: "review-rules",
   categoryMappingPanel: "category-mapping",
   yandexCommissionPanel: "yandex-commission",
+  systemCategoryPanel: "system-category",
   ozonCommissionPanel: "ozon-commission",
   logisticsFeePanel: "logistics-fees",
   financePurchasePanel: "finance-purchase",
@@ -111,9 +114,9 @@ async function ensurePanelData(panelId) {
     refreshOrderProfitData();
     applyFiltersAndRender();
     updateReportStats();
-    // Dashboard charts aggregate the FULL order list, not just the current
-    // orders page (state.orders holds only one page).
-    await loadDashboardOrders();
+    // 仪表盘由后端聚合接口提供（聚合全量订单，而不是当前分页）；loadDashboardSummary()
+    // 成功后内部会重算 KPI 并渲染图表，这里的 renderDashboard() 负责失败/占位的兜底渲染。
+    await loadDashboardSummary();
     renderDashboard();
   }
 
@@ -252,8 +255,10 @@ async function ensurePanelData(panelId) {
       state.panelLoaded.shops = Boolean(ok);
     }
     if (!state.panelLoaded.publishSettings) {
-      await loadPublishSettings();
-      state.panelLoaded.publishSettings = true;
+      const settingsLoaded = await loadPublishSettings();
+      // 与上面 shops 一致：只有真的加载成功才算「已加载」。失败也标成 true 就再也不会重试，
+      // 设置面板会永远停留在缺失状态。
+      state.panelLoaded.publishSettings = Boolean(settingsLoaded);
     }
     if (!state.panelLoaded.publishProducts) {
       const ok = await loadPublishProducts();
@@ -428,5 +433,9 @@ async function switchPanel(panelId, options = {}) {
       });
     }
     computeYandexFee();
+  }
+  if (resolvedPanelId === "productDevPanel") {
+    // 产品开发库：数据加载在 pages/product-dev/product-dev.js 内（本分支只做加法，不动其他面板）。
+    pdevEnsurePanelLoaded();
   }
 }

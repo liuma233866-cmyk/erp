@@ -1,5 +1,6 @@
 const { buildYandexAuthProfiles } = require("./yandex-fetch");
 const { formatYandexApiError, shouldRetryWithNextAuth } = require("./yandex-http");
+const { withFetchTimeout } = require("./http-timeout");
 
 const YANDEX_MARKET_BASE_URL = process.env.YANDEX_MARKET_BASE_URL || "https://api.partner.market.yandex.ru";
 const yandexCategoryParameterCache = new Map();
@@ -168,10 +169,10 @@ async function fetchYandexCategoryParameters(categoryId, businessId, apiKey) {
   let lastErrorMessage = "";
 
   for (const profile of authProfiles) {
-    const response = await fetch(endpoint, {
+    const response = await fetch(endpoint, withFetchTimeout({
       method: "POST",
       headers: { ...profile.headers, "Content-Type": "application/json" }
-    });
+    }));
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       lastErrorMessage = formatYandexApiError(response.status, data);

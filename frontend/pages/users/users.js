@@ -207,10 +207,10 @@ function renderUsersTable(items) {
       const canEdit = !targetIsAdmin && (isAdmin || (isCompanyAdmin && !targetIsCompanyAdmin && isSameCompanyEntity(user, state.user)));
       const roleSelect = canEdit && roleOptions.length
         ? `<select class="role-select" data-field="role">${roleOptions
-            .map((role) => `<option value="${role}" ${user.role === role ? "selected" : ""}>${getRoleLabel(role)}</option>`)
+            .map((role) => `<option value="${role}" ${user.role === role ? "selected" : ""}>${escapeHtml(getRoleLabel(role))}</option>`)
             .join("")}</select>
            <button class="small-btn" data-action="save-role">保存角色</button>`
-        : `<span>${getRoleLabel(user.role)}</span>`;
+        : `<span>${escapeHtml(getRoleLabel(user.role))}</span>`;
       const currentShopPerm = user.shopPermissions || {};
       const permissionLevel = currentShopPerm.shopCreate || currentShopPerm.shopToggle
         ? "manage"

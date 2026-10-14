@@ -38,6 +38,11 @@ function startOfMonth(date) {
 
 function openImagePreview(src) {
   closeImagePreview();
+  // 立即清掉仍在淡出中的旧遮罩：保证任何时刻最多只有一个遮罩存在。
+  // 否则快速连续打开会叠加多个全屏遮罩，而 closeImagePreview() 只处理其中一个。
+  document.querySelectorAll(".order-image-preview-mask").forEach(function (existing) {
+    if (existing.parentNode) existing.parentNode.removeChild(existing);
+  });
   const mask = document.createElement("div");
   mask.className = "order-image-preview-mask";
   mask.addEventListener("click", onPreviewMaskClick);
@@ -75,14 +80,17 @@ function openImagePreview(src) {
 }
 
 function closeImagePreview() {
-  const mask = document.querySelector(".order-image-preview-mask");
-  if (!mask) return;
-  mask.classList.remove("visible");
-  mask.removeEventListener("click", onPreviewMaskClick);
-  mask.removeEventListener("keydown", onPreviewKeydown);
-  setTimeout(function () {
-    if (mask.parentNode) mask.parentNode.removeChild(mask);
-  }, 200);
+  // 关闭**所有**遮罩。openImagePreview() 每次都新建一个，而这里原先只取第一个：
+  // 快速连续打开时旧遮罩会留在 DOM 里，且第一个被移除后，后续遮罩的关闭会作用在错的节点上，
+  // 极端情况下会留下一个吞掉点击的全屏遮罩（只能刷新页面）。
+  document.querySelectorAll(".order-image-preview-mask").forEach(function (mask) {
+    mask.classList.remove("visible");
+    mask.removeEventListener("click", onPreviewMaskClick);
+    mask.removeEventListener("keydown", onPreviewKeydown);
+    setTimeout(function () {
+      if (mask.parentNode) mask.parentNode.removeChild(mask);
+    }, 200);
+  });
 }
 
 function formatDateInputValue(date) {
@@ -155,9 +163,11 @@ function renderChart(series) {
   linePaid.setAttribute("points", paidPoints);
   lineRefund.setAttribute("points", refundPoints);
 
+  // 系列名与真实口径一致：paidSeries 统计的是「已发货」金额，refundSeries 统计的是「作废」金额。
+  // （内部字段名 paid/refund 是历史命名，为避免大范围改动而保留，见下方 buildSeries 的注释。）
   renderPoints(lineOrder, series.orderSeries, series.labels, "订单总金额", max);
-  renderPoints(linePaid, series.paidSeries, series.labels, "付款金额", max);
-  renderPoints(lineRefund, series.refundSeries, series.labels, "退款金额", max);
+  renderPoints(linePaid, series.paidSeries, series.labels, "已发货金额", max);
+  renderPoints(lineRefund, series.refundSeries, series.labels, "作废金额", max);
 
   chartXAxis.innerHTML = series.labels.length ? series.labels.map((label) => `<span>${label}</span>`).join("") : "<span>-</span>";
 }
@@ -202,35 +212,19 @@ function hideChartTooltip() {
   chartTooltip.classList.add("hidden");
 }
 
-function renderBarCharts() {
+// 参数是后端算好的平台桶（{ providerTotals, statusCounts }），不再自己遍历全量订单。
+function renderBarCharts(bucket) {
   if (!barChartPlatform || !barChartStatus) return;
-  const orders = filterOrdersByPlatform(getDashboardOrders(), dashboardState.platform);
-
-  const platformTotals = new Map();
-  for (const order of orders) {
-    const providerRaw = String(order.provider || order.platform || "").trim();
-    const providerLower = providerRaw.toLowerCase();
-    let label = providerRaw || "其他";
-    if (providerLower.includes("yandex")) label = "Yandex";
-    else if (providerLower.includes("ozon")) label = "Ozon";
-    const amount = getRubAmount(order);
-    platformTotals.set(label, (platformTotals.get(label) || 0) + amount);
-  }
-
-  const platformItems = Array.from(platformTotals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  barChartPlatform.innerHTML = buildBarRows(platformItems, "currency");
+  const providerItems = ((bucket && bucket.providerTotals) || []).map((item) => [item.label, item.amountRub]);
+  barChartPlatform.innerHTML = buildBarRows(providerItems, "currency");
 
   const statusLabels = {
     pending: "新订单",
     shipped: "已发货",
     cancelled: "作废"
   };
-  const statusTotals = new Map();
-  for (const order of orders) {
-    const status = String(order.status || "pending");
-    statusTotals.set(status, (statusTotals.get(status) || 0) + 1);
-  }
-  const statusItems = Array.from(statusTotals.entries()).map(([key, value]) => [statusLabels[key] || key, value, key]);
+  const statusItems = Object.entries((bucket && bucket.statusCounts) || {})
+    .map(([key, value]) => [statusLabels[key] || key, value, key]);
   barChartStatus.innerHTML = buildBarRows(statusItems, "count");
 }
 
@@ -350,7 +344,12 @@ function buildSeries(orders, period) {
     const key = periodKey(date, period);
     const current = buckets.get(key) || { order: 0, paid: 0, refund: 0 };
     const amount = getRubAmount(order);
+    // order 是该时间桶内全部订单的金额；paid / refund 都是它的子集，因此蓝线恒 >= 绿线、橙线，
+    // 蓝线并不是「绿 + 橙」（未发货也未作废的 pending 订单只进蓝线）。
     current.order += amount;
+    // 字段名与实际口径有偏差，保留旧名以免大范围改动：paid 累加的是「已发货」金额
+    // （status === "shipped"），refund 累加的是「作废」金额（status === "cancelled"）。
+    // 数据里既没有独立的"已付款"状态，也没有退款金额字段——界面文案已按真实口径显示。
     if (order.status === "shipped") current.paid += amount;
     if (order.status === "cancelled") current.refund += amount;
     buckets.set(key, current);

@@ -23,6 +23,7 @@ const { applyHistoricalRevenueFallback } = require("./order-pricing");;
 ;
 const { backfillOrderProductMatches } = require("./order-product-matcher");;
 const { buildOrderV2Summary, isOrderV2Eligible, normalizeOrderV2 } = require("./orders-v2");;
+const { buildOrderSummary } = require("./order-summary");;
 const { buildRequestedOrderSyncPlan, normalizeOrderSyncOptions } = require("./order-sync-routing");;
 const { getShopOrderWorkspace, normalizeOrderWorkspace, orderBelongsToWorkspace } = require("./shop-order-workspace");;
 const { resolveInitialDatabase } = require("./database-bootstrap");;
@@ -35,7 +36,8 @@ const { normalizePartnerTokenInput } = require("./yandex-http");;
 const { buildCommissionKeywords, buildZhCategoryFromRuEn, normalizeCategoryLevelsWithDash, parseYandexLegalCommissionCatalogFromHtml } = require("./yandex-category-text");;
 const { findMatchingReviewRule, normalizeNullableNumber, normalizePublishSettings, normalizeReviewRule } = require("./settings-normalize");;
 const { buildSessionCookie, fetchJson, getBearerToken, parseJsonBody, parseRawBody, sendJson, serveStaticFile, setApiCorsHeaders } = require("./http-utils");;
-const { applyOrderPurchaseOverrides, backfillOrderAmounts, backfillOrderPurchaseFields, buildOrderPurchasePayload, dedupeOrders, findOrderByRef, findOrderIndexByRef, hasTextValue, inferHistoricalOrderRevenue, restorePurchaseFromAuditLogs } = require("./order-backfill");;
+const { withFetchTimeout } = require("./http-timeout");;
+const { applyOrderPurchaseOverrides, backfillOrderAmounts, backfillOrderPurchaseFields, buildOrderPurchaseOverridesFromRows, buildOrderPurchasePayload, dedupeOrders, findOrderByRef, findOrderIndexByRef, hasTextValue, inferHistoricalOrderRevenue, restorePurchaseFromAuditLogs } = require("./order-backfill");;
 const { buildDeliveryServiceMap, collectYandexOfferIds, enrichYandexOfferMapWithOnlineProducts, extractYandexOrderId, extractYandexTracking, firstItemSku, mapYandexOfferEntryToProduct, mapYandexOrderToLocal, normalizeItemCount } = require("./yandex-orders-map");;
 const { attachShopIdsToOnlineProducts, attachShopIdsToOrders, filterOnlineProductsByAssignments, filterOrdersByAssignments, canUserAccessShop, getUserAssignedShopIds, normalizeShopAssignments, resolvePublishPlatformFromShopId, resolvePublishTargetShopId, resolveScopedDraftShopId } = require("./shop-scope");;
 const { buildPublishProductKey, expandPublishProductToYandexPayloads, getPublishProductAttributeTerms, getPublishProductCategoryId, isLockedPublishProduct, normalizeOnlineProductRecord, normalizePublishProductRecord, validatePublishProductForYandex } = require("./publish-normalize");;
@@ -45,7 +47,11 @@ const { fetchAllYandexOfferCards, fetchYandexCampaign, fetchYandexCategoryIndex,
 const { buildLogCheckerReport, extractFreshLogEntries, formatAuditWarnings, readRecentLocalErrorTail, sanitizeAuditLogForClient, sanitizeProductPublishAuditPayload } = require("./log-checker");;
 const { upsertCollectionBoxEntry, applyPublishOutcome, listCollectionBox, listPublishRecords } = require("./page-stores");;
 const { createAuthService } = require("./auth-service");;
-const { createSqlWriters, ORDER_PURCHASE_FIELDS } = require("./sql-persistence");;
+const { createSqlWriters, YANDEX_COMMISSION_CATALOG_DDL } = require("./sql-persistence");;
+const { createOrderSyncService } = require("./orders/order-sync");
+const { createPublishService } = require("./publish/publish-service");
+const { createReportingService } = require("./reporting/reporting-service");
+const { createAuditStore, AUDIT_TABLE_DDL } = require("./audit/audit-store");
 const { createRatesRoutes } = require("./routes/rates");;
 const { createAuditRoutes } = require("./routes/audit");;
 const { createMessagesRoutes } = require("./routes/messages");;
@@ -53,6 +59,9 @@ const { createUsersRoutes } = require("./routes/users");;
 const { createShopsRoutes } = require("./routes/shops");;
 const { createReviewRulesRoutes } = require("./routes/review-rules");;
 const { createCategoryMappingRoutes } = require("./routes/category-mapping");;
+const { createSystemCategoryRoutes } = require("./routes/system-categories");
+const { createUploadRoutes } = require("./routes/uploads");
+const { createPdevLinkRoutes } = require("./routes/pdev-links");
 const { createCommissionRoutes } = require("./routes/commission");;
 const { createYandexQualityRoutes } = require("./routes/yandex-quality");;
 const { createYandexCategoryParamsRoutes } = require("./routes/yandex-category-params");;
@@ -65,6 +74,10 @@ const { createMarketCommissionRoutes } = require("./routes/market-commissions");
 const { createCollectorRoutes } = require("./routes/collector");;
 const { createCollectionBoxRoutes } = require("./routes/collection-box");;
 const { createPublishRecordsRoutes } = require("./routes/publish-records");;
+const { createPdevRepository } = require("./product-dev/pdev-repository");;
+const { createPdevService } = require("./product-dev/pdev-service");;
+const { createPdevRoutes } = require("./product-dev/pdev-routes");;
+const { ensurePdevTables } = require("./product-dev/pdev-schema");;
 const { buildOnlineProductKey, calculateYandexOnlineProductFees } = require("./yandex-tariffs");;
 const { enrichYandexItemsWithParameterValues, fetchYandexCategoryParameters } = require("./yandex-parameter-values");;
 const {
@@ -170,7 +183,16 @@ ignoreBrokenPipe(process.stderr);
 
 const HOST = String(process.env.HOST || "0.0.0.0").trim() || "0.0.0.0";
 const PORT = Number(process.env.PORT || 3000);
-const TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+// 【task-25】登录有效期（会话 token TTL）改为可配置：AUTH_TOKEN_TTL_HOURS（单位：小时）。
+//   未配置 / 空 / 非法 / 负数 / NaN → 一律回落 2 小时（与改动前行为完全一致），且不抛异常。
+//   这里算出的 TOKEN_TTL_MS 是**唯一来源**：登录接口既用它算 token 过期时间，也用它算 Cookie 的
+//   Max-Age（routes/auth.js 里 Math.floor(TOKEN_TTL_MS / 1000)），代码里不再有写死的秒数。
+const AUTH_TOKEN_TTL_HOURS_DEFAULT = 2;
+const AUTH_TOKEN_TTL_HOURS = (function (raw) {
+  const parsed = Number(String(raw === undefined || raw === null ? "" : raw).trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : AUTH_TOKEN_TTL_HOURS_DEFAULT;
+})(process.env.AUTH_TOKEN_TTL_HOURS);
+const TOKEN_TTL_MS = Math.round(AUTH_TOKEN_TTL_HOURS * 60 * 60 * 1000);
 const BACKEND_DIR = __dirname;
 const APP_ROOT = path.resolve(BACKEND_DIR, "..");
 const DATA_DIR = path.resolve(APP_ROOT, String(process.env.DATA_DIR || APP_ROOT));
@@ -178,8 +200,27 @@ const LOG_DIR = path.resolve(APP_ROOT, String(process.env.LOG_DIR || APP_ROOT));
 const APP_LOG_FILE = path.join(LOG_DIR, "server.out.log");
 const APP_ERROR_LOG_FILE = path.join(LOG_DIR, "server.err.log");
 const YANDEX_MARKET_BASE_URL = process.env.YANDEX_MARKET_BASE_URL || "https://api.partner.market.yandex.ru";
-// 刊登前的卡片质量门槛：Yandex 官方建议把卡片质量保持在 80 分以上。
-const PUBLISH_QUALITY_MIN_SCORE = 80;
+// 刊登编排域已拆到 backend/publish/publish-service.js：这里只做依赖注入与别名，
+// 保持 routes/publish.js 使用的 executeProductPublish / executeOzonProductPublish 名称不变。
+const publishService = createPublishService({
+  getDb: () => db,
+  saveDatabase: () => saveDatabase(),
+  isSqlReady: () => sqlReady,
+  getSqlPool: () => sqlPool,
+  logError,
+  normalizePublishSettings,
+  validatePublishProductForYandex,
+  expandPublishProductToYandexPayloads,
+  resolvePublishTargetShopId,
+  publishYandexProducts,
+  publishOzonProducts,
+  enrichYandexItemsWithParameterValues,
+  fetchYandexOfferCards,
+  readCardQualityByOffers,
+  yandexMarketBaseUrl: YANDEX_MARKET_BASE_URL
+});
+const executeProductPublish = publishService.executeProductPublish;
+const executeOzonProductPublish = publishService.executeOzonProductPublish;
 const OPENAI_API_BASE_URL = "https://api.openai.com/v1/responses";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const CBR_DAILY_JSON_URL = "https://www.cbr-xml-daily.com/daily_json.js";
@@ -217,7 +258,6 @@ const CENTRAL_CATALOG_ENABLED = String(process.env.CENTRAL_CATALOG_ENABLED || "1
 
 let db;
 let bootstrapAdminNotice = null;
-let cachedRates = { ts: 0, payload: null };
 let sqlPool = null;
 let sqlReady = false;
 const sqlWriters = createSqlWriters({
@@ -231,8 +271,66 @@ const sqlWriters = createSqlWriters({
 let centralCatalogService = null;
 let sqlOrdersTableWasEmpty = false;
 let sqlPurchaseTableWasEmpty = false;
-let orderSyncTimer = null;
-const orderSyncState = { running: false };
+// 审计日志已改增量写 audit_logs 表，不再进 AppState 快照（归属由 backend/persistence/store-manifest.js 声明）。
+const auditStore = createAuditStore({
+  getSqlPool: () => sqlPool,
+  isSqlReady: () => sqlReady,
+  logError
+});
+// 报表/费率/审计洞察域已拆到 backend/reporting/reporting-service.js。
+const reportingService = createReportingService({
+  getDb: () => db,
+  isSqlReady: () => sqlReady,
+  getSqlPool: () => sqlPool,
+  sqlWriters,
+  logError,
+  fetchJson,
+  normalizeNullableNumber,
+  isExchangeRateFresh,
+  findMatchingReviewRule,
+  computeOrderProfit,
+  deriveRates,
+  cbrDailyJsonUrl: CBR_DAILY_JSON_URL,
+  currencyRateMaxAgeDays: CURRENCY_RATE_MAX_AGE_DAYS
+});
+const getRecentAuditIssues = reportingService.getRecentAuditIssues;
+const refreshOrderProfitSnapshots = reportingService.refreshOrderProfitSnapshots;
+const fetchCbrRate = reportingService.fetchCbrRate;
+const fetchStoredCbrRate = reportingService.fetchStoredCbrRate;
+const fetchRubPurchaseCostRate = reportingService.fetchRubPurchaseCostRate;
+const mapCbrRate = reportingService.mapCbrRate;
+// 订单同步域已拆到 backend/orders/order-sync.js：这里只做依赖注入与状态别名，
+// 保持 routes/orders.js 与 /health 使用的 syncOrdersForShops / orderSyncState 名称不变。
+const orderSyncService = createOrderSyncService({
+  getDb: () => db,
+  saveDatabase: () => saveDatabase(),
+  logInfo,
+  logError,
+  fetchOzonFbsOrders,
+  mapOzonPostingToLocal,
+  fetchYandexOrders,
+  fetchYandexOrderDetail,
+  extractYandexOrderId,
+  collectYandexOfferIds,
+  fetchYandexOfferMappings,
+  enrichYandexOfferMapWithOnlineProducts,
+  mapYandexOrderToLocal,
+  backfillOrderProductMatches,
+  backfillOrderPurchaseFields,
+  hasTextValue,
+  applyHistoricalRevenueFallback,
+  inferHistoricalOrderRevenue,
+  getOrderUniqueKey,
+  dedupeOrders,
+  applyOrderPurchaseOverrides,
+  config: {
+    enabled: ORDER_SYNC_ENABLED,
+    dailyTime: ORDER_SYNC_DAILY_TIME,
+    detailConcurrency: Number(process.env.YANDEX_ORDER_DETAIL_CONCURRENCY || 5)
+  }
+});
+const orderSyncState = orderSyncService.state;
+const syncOrdersForShops = orderSyncService.syncOrdersForShops;
 let databaseWriteQueue = Promise.resolve();
 const loginRateBuckets = new Map();
 const apiRateBuckets = new Map();
@@ -449,6 +547,22 @@ const categoryMappingRoutes = createCategoryMappingRoutes({
   resolveScopedDraftShopId,
   makeId,
 });
+const systemCategoryRoutes = createSystemCategoryRoutes({
+  // 注意：这里必须【惰性引用】——getSqlPool 在文件后面才声明，顶层裸引用会 TDZ 导致整个文件加载失败
+  getSqlPool: () => sqlPool,
+  authService,
+  respondApi,
+  getDb: () => db,
+  parseJsonBody,
+  maskSensitive,
+  saveDatabase,
+  normalizeProductCategoryKnowledge,
+  getUserAssignedShopIds,
+  resolveScopedDraftShopId,
+  makeId,
+})
+const uploadRoutes = createUploadRoutes({ authService, respondApi, parseJsonBody })
+const pdevLinkRoutes = createPdevLinkRoutes({ authService, respondApi, parseJsonBody, getSqlPool: () => sqlPool });;;
 const reviewRulesRoutes = createReviewRulesRoutes({
   authService,
   respondApi,
@@ -719,6 +833,8 @@ const publishRecordsRoutes = createPublishRecordsRoutes({
   readPositiveIntParam,
   listPublishRecords
 });
+const productDevService = createPdevService({ repository: createPdevRepository({ getPool: () => sqlPool }) });
+const productDevRoutes = createPdevRoutes({ pdevService: productDevService, authService, respondApi, parseJsonBody, maskSensitive, getDb: () => db, sanitizeAuditLogForClient, auditStore });
 const aiRoutes = createAiRoutes({
   aiConfigModule,
   aiImagePromptsModule,
@@ -779,6 +895,7 @@ const ordersRoutes = createOrdersRoutes({
   isOrderV2Eligible,
   normalizeOrderV2,
   buildOrderV2Summary,
+  buildOrderSummary,
   findOrderIndexByRef,
   findOrderByRef,
   canUserAccessShop,
@@ -955,10 +1072,7 @@ async function shutdownGracefully(signal) {
     process.exit(1);
   }, 5000);
   if (typeof forceExit.unref === "function") forceExit.unref();
-  if (orderSyncTimer) {
-    clearTimeout(orderSyncTimer);
-    orderSyncTimer = null;
-  }
+  orderSyncService.clearScheduler();
   if (rateLimitCleanupTimer) {
     clearInterval(rateLimitCleanupTimer);
     rateLimitCleanupTimer = null;
@@ -983,7 +1097,7 @@ async function shutdownGracefully(signal) {
 
 async function startServer() {
   await initializeAppRuntime();
-  startOrderSyncScheduler();
+  orderSyncService.startScheduler();
   startRateLimitCleanup();
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -1069,6 +1183,25 @@ async function handleApi(req, res, url) {
     }
   }
   for (const route of categoryMappingRoutes) {
+    if (route.matches(pathname, req.method)) {
+      await route.handler(req, res, query, auditBase, pathname);
+      return;
+    }
+  }
+
+for (const route of systemCategoryRoutes) {
+    if (route.matches(pathname, req.method)) {
+      await route.handler(req, res, query, auditBase, pathname);
+      return;
+    }
+  }
+for (const route of uploadRoutes) {
+    if (route.matches(pathname, req.method)) {
+      await route.handler(req, res, query, auditBase, pathname);
+      return;
+    }
+  }
+for (const route of pdevLinkRoutes) {
     if (route.matches(pathname, req.method)) {
       await route.handler(req, res, query, auditBase, pathname);
       return;
@@ -1211,6 +1344,12 @@ async function handleApi(req, res, url) {
       return;
     }
   }
+  for (const route of productDevRoutes) {
+    if (route.matches(pathname, req.method)) {
+      await route.handler(req, res, query, auditBase, pathname, url);
+      return;
+    }
+  }
   respondApi(req, res, null, { ...auditBase, resourceType: "system" }, 404, { message: "Not found" });
 }
 
@@ -1289,269 +1428,14 @@ function writeAudit(req, actorUser, auditMeta, statusCode, payload) {
   if (db.auditLogs.length > AUDIT_MAX_RECORDS) {
     db.auditLogs = db.auditLogs.slice(db.auditLogs.length - AUDIT_MAX_RECORDS);
   }
+  // 增量落表（fire-and-forget，内部串行队列保证顺序）；审计不再依赖快照持久化。
+  auditStore.insert(entry);
   if (!new Set(["read", "filter_query"]).has(String(auditMeta?.actionType || "read"))) {
     saveDatabase();
   }
 }
 
 
-
-function startOrderSyncScheduler() {
-  if (!ORDER_SYNC_ENABLED) {
-    console.log("Order auto sync disabled (ORDER_SYNC_ENABLED=0).");
-    return;
-  }
-  scheduleNextOrderSync();
-}
-
-function parseOrderSyncDailyTime(value) {
-  const match = String(value || "").match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-  if (!match) return { hour: 6, minute: 0, valid: false };
-  return { hour: Number(match[1]), minute: Number(match[2]), valid: true };
-}
-
-function scheduleNextOrderSync() {
-  if (orderSyncTimer) {
-    clearTimeout(orderSyncTimer);
-    orderSyncTimer = null;
-  }
-  const parsed = parseOrderSyncDailyTime(ORDER_SYNC_DAILY_TIME);
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(parsed.hour, parsed.minute, 0, 0);
-  if (next.getTime() <= now.getTime()) {
-    next.setDate(next.getDate() + 1);
-  }
-  const delay = Math.max(1000, next.getTime() - now.getTime());
-  if (!parsed.valid) {
-    console.log(`Invalid ORDER_SYNC_DAILY_TIME="${ORDER_SYNC_DAILY_TIME}", fallback to 06:00.`);
-  }
-  console.log(`Order auto sync scheduled at ${next.toLocaleString()}.`);
-  orderSyncTimer = setTimeout(async () => {
-    try {
-      await runScheduledOrderSync();
-    } catch (error) {
-      console.error("Order auto sync failed:", error);
-    } finally {
-      scheduleNextOrderSync();
-    }
-  }, delay);
-}
-
-async function runScheduledOrderSync() {
-  if (orderSyncState.running) {
-    console.log("Order auto sync skipped: previous run still in progress.");
-    return;
-  }
-  orderSyncState.running = true;
-  try {
-    const enabledShops = Array.isArray(db?.shops) ? db.shops.filter((s) => Boolean(s.enabled)) : [];
-    const summary = await syncOrdersForShops(enabledShops);
-    console.log(
-      `Order auto sync done: added=${summary.added}, updated=${summary.updated}, skipped=${summary.skipped}, shops=${enabledShops.length}, errors=${summary.errors.length}`
-    );
-  } finally {
-    orderSyncState.running = false;
-  }
-}
-
-// 并发执行 worker，最多 limit 个同时在跑，保持输入顺序输出结果。
-async function mapWithConcurrency(items, limit, worker) {
-  const results = new Array(items.length);
-  let nextIndex = 0;
-  const runner = async () => {
-    while (nextIndex < items.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      results[index] = await worker(items[index], index);
-    }
-  };
-  const poolSize = Math.max(1, Math.min(16, Number(limit) || 4));
-  await Promise.all(Array.from({ length: Math.min(poolSize, items.length) }, () => runner()));
-  return results;
-}
-
-async function syncOrdersForShops(shops, options = {}) {
-  if (!Array.isArray(db.orders)) db.orders = [];
-  const existingOrderByKey = new Map(
-    db.orders
-      .map((o) => [getOrderUniqueKey(o), o])
-      .filter(([key]) => Boolean(key))
-  );
-  const seenOrderKeys = new Set();
-  const targetShops = Array.isArray(shops) ? shops : [];
-  const targetOrderNos = Array.isArray(options.orderNos) ? options.orderNos.map((item) => String(item || "").trim()).filter(Boolean) : [];
-
-  let added = 0;
-  let updated = 0;
-  let skipped = 0;
-  const errors = [];
-
-  const acceptOrder = (order, shop) => {
-    if (!order?.shopOrderNo) return { action: "skipped", message: "订单缺少: 订单号" };
-    backfillOrderProductMatches([order], db.onlineProducts || []);
-    backfillOrderPurchaseFields([order], db.onlineProducts || []);
-    applyHistoricalRevenueFallback(order, inferHistoricalOrderRevenue(order, db.orders));
-    const orderKey = getOrderUniqueKey(order);
-    if (!orderKey) return { action: "skipped", message: "订单缺少唯一标识" };
-    if (seenOrderKeys.has(orderKey)) return { action: "skipped" };
-    seenOrderKeys.add(orderKey);
-    const existingOrder = existingOrderByKey.get(orderKey);
-    if (!existingOrder) {
-      const newOrder = { ...order, updatedAt: new Date().toISOString() };
-      db.orders.unshift(newOrder);
-      existingOrderByKey.set(orderKey, newOrder);
-      return { action: "added" };
-    }
-    const incomingAmount = Number(order.amount);
-    const resolvedAmount = Number.isFinite(incomingAmount) && incomingAmount > 0 ? incomingAmount : Number(existingOrder.amount) || 0;
-    const changed =
-      Number(existingOrder.amount || 0) !== Number(resolvedAmount || 0) ||
-      String(existingOrder.status || "") !== String(order.status || "") ||
-      String(existingOrder.shopStatus || "") !== String(order.shopStatus || "") ||
-      String(existingOrder.shopSubstatus || "") !== String(order.shopSubstatus || "") ||
-      String(existingOrder.customerReceiptCode || "") !== String(order.customerReceiptCode || "") ||
-      String(existingOrder.customerReceivedAt || "") !== String(order.customerReceivedAt || "") ||
-      String(existingOrder.deadlineAt || "") !== String(order.deadlineAt || "") ||
-      String(existingOrder.logistics || "") !== String(order.logistics || "") ||
-      String(existingOrder.warehouse || "") !== String(order.warehouse || "") ||
-      String(existingOrder.trackingNo || "") !== String(order.trackingNo || "") ||
-      String(existingOrder.shopSku || "") !== String(order.shopSku || "") ||
-      Number(existingOrder.itemCount || 0) !== Number(order.itemCount || 0) ||
-      JSON.stringify(existingOrder.items || []) !== JSON.stringify(order.items || []);
-    Object.assign(existingOrder, {
-      ...existingOrder, ...order, amount: resolvedAmount, updatedAt: new Date().toISOString(),
-      purchasePriceRmb: hasTextValue(order.purchasePriceRmb) ? order.purchasePriceRmb : existingOrder.purchasePriceRmb || "",
-      purchasePriceRub: hasTextValue(order.purchasePriceRub) ? order.purchasePriceRub : existingOrder.purchasePriceRub || "",
-      purchaseLink: hasTextValue(order.purchaseLink) ? order.purchaseLink : existingOrder.purchaseLink || ""
-    });
-    return { action: changed ? "updated" : "skipped" };
-  };
-
-  for (const shop of targetShops) {
-    try {
-      if (!shop.apiKey || !shop.campaignId) {
-        skipped += 1;
-        errors.push({ shopId: shop.id, message: "缺少apiKey或campaignId" });
-        continue;
-      }
-      if (shop.provider === "ozon") {
-        const result = await fetchOzonFbsOrders(shop.campaignId, shop.apiKey, {
-          fromDate: options.fromDate || "",
-          toDate: options.toDate || "",
-          orderNos: targetOrderNos
-        });
-        if (!result.ok) {
-          skipped += 1;
-          errors.push({ shopId: shop.id, message: result.message || "Ozon订单拉取失败" });
-          continue;
-        }
-        if (targetOrderNos.length && !result.items.length) {
-          skipped += 1;
-          errors.push({ shopId: shop.id, message: "指定订单号未在该店铺找到" });
-          continue;
-        }
-        for (const raw of result.items) {
-          const outcome = acceptOrder(mapOzonPostingToLocal(raw, shop), shop);
-          if (outcome.action === "added") added += 1;
-          else if (outcome.action === "updated") updated += 1;
-          else skipped += 1;
-          if (outcome.message) errors.push({ shopId: shop.id, message: outcome.message });
-        }
-        continue;
-      }
-      if (shop.provider !== "yandex_market") {
-        skipped += 1;
-        continue;
-      }
-      const detailedOrders = [];
-      if (targetOrderNos.length > 0) {
-        for (const orderNo of targetOrderNos) {
-          const detail = await fetchYandexOrderDetail(shop.campaignId, shop.apiKey, orderNo);
-          if (!detail.ok || !detail.item) {
-            errors.push({
-              shopId: shop.id,
-              message: detail.message || "订单详情拉取失败，可能是 Api-Key 权限不足或已失效"
-            });
-            continue;
-          }
-          detailedOrders.push(detail.item);
-        }
-        if (!detailedOrders.length) {
-          skipped += 1;
-          errors.push({ shopId: shop.id, message: "指定订单号未在该店铺找到" });
-          continue;
-        }
-      } else {
-        const result = await fetchYandexOrders(shop.campaignId, shop.apiKey, {
-          businessId: shop.businessId || "",
-          fromDate: options.fromDate || "",
-          toDate: options.toDate || ""
-        });
-        if (!result.ok) {
-          skipped += 1;
-          errors.push({
-            shopId: shop.id,
-            message: result.message || "拉取失败，可能是 Api-Key 权限不足、已过期或店铺范围不匹配"
-          });
-          continue;
-        }
-        // The list endpoint may include only the first item. Order detail is
-        // required to persist every product in a multi-item order. Fetch the
-        // details concurrently so a full sync does not stall on serial calls.
-        const detailResults = await mapWithConcurrency(result.items || [], 8, async (raw) => {
-          const orderId = extractYandexOrderId(raw);
-          if (!orderId) return { orderId: "", item: null, message: "订单缺少ID" };
-          const detail = await fetchYandexOrderDetail(shop.campaignId, shop.apiKey, orderId);
-          return detail.ok && detail.item
-            ? { orderId, item: detail.item, message: "" }
-            : { orderId, item: null, message: detail.message || `订单${orderId}详情拉取失败，可能是 Api-Key 权限不足或已失效` };
-        });
-        for (const entry of detailResults) {
-          if (!entry.item) {
-            skipped += 1;
-            errors.push({ shopId: shop.id, message: entry.message });
-            continue;
-          }
-          detailedOrders.push(entry.item);
-        }
-      }
-
-      const offerIds = collectYandexOfferIds(detailedOrders);
-      let offerMap = {};
-      if (offerIds.length && shop.businessId) {
-        const offerResult = await fetchYandexOfferMappings(String(shop.businessId), shop.apiKey, offerIds);
-        if (offerResult.ok) {
-          offerMap = offerResult.map || {};
-        } else {
-          errors.push({
-            shopId: shop.id,
-            message: offerResult.message || "拉取商品映射失败，可能是 Api-Key 权限不足或已失效"
-          });
-        }
-      }
-      // The order-detail API often omits per-SKU pictures. Enrich its mapping
-      // from the ERP's own platform-product table before building order items.
-      offerMap = enrichYandexOfferMapWithOnlineProducts(offerMap, db.onlineProducts || [], shop);
-      for (const raw of detailedOrders) {
-        const order = mapYandexOrderToLocal(raw, shop, offerMap);
-        const outcome = acceptOrder(order, shop);
-        if (outcome.action === "added") added += 1;
-        else if (outcome.action === "updated") updated += 1;
-        else skipped += 1;
-        if (outcome.message) errors.push({ shopId: shop.id, message: outcome.message });
-      }
-    } catch (error) {
-      skipped += 1;
-      errors.push({ shopId: shop.id, message: `店铺同步异常：${String(error)}` });
-    }
-  }
-
-  db.orders = dedupeOrders(db.orders);
-  applyOrderPurchaseOverrides(db.orders, db.orderPurchaseOverrides || []);
-  saveDatabase();
-  return { added, updated, skipped, errors, errorSummary: errors.map((item) => `店铺${item.shopId}: ${item.message}`).filter(Boolean) };
-}
 
 function readClientIp(req) {
   return resolveClientIp(req.headers["x-forwarded-for"], req.socket?.remoteAddress || "", TRUST_PROXY);
@@ -1575,215 +1459,6 @@ function readClientIp(req) {
 // continuation (for example a stack trace). Records are only considered fresh when
 // their anchor parses and is at or after sinceTs: non-timestamped lines never stand
 // alone, and a timestamp that cannot be parsed is treated as stale rather than fresh.
-
-
-function getRecentAuditIssues(hours = 24) {
-  const cutoff = Date.now() - hours * 60 * 60 * 1000;
-  return (db.auditLogs || []).filter((item) => {
-    const ts = new Date(item.ts).getTime();
-    if (!Number.isFinite(ts) || ts < cutoff) return false;
-    return !item.success || String(item.warningMessage || "").trim();
-  });
-}
-
-
-
-
-
-
-
-
-
-async function refreshOrderProfitSnapshots() {
-  if (!sqlReady || !sqlPool) return 0;
-  let rubPurchaseCostRate = 0;
-  let cnyRateRub = 0;
-  try {
-    const [rows] = await sqlPool.query(
-      `SELECT cnyRateRub, rubPurchaseCostRate
-       FROM exchange_rates_daily
-       WHERE (cnyRateRub IS NOT NULL AND cnyRateRub > 0) OR (rubPurchaseCostRate IS NOT NULL AND rubPurchaseCostRate > 0)
-       ORDER BY rateDate DESC
-       LIMIT 1`
-    );
-    const row = rows?.[0];
-    cnyRateRub = normalizeNullableNumber(row?.cnyRateRub) || 0;
-    rubPurchaseCostRate = normalizeNullableNumber(row?.rubPurchaseCostRate) || 0;
-  } catch (error) {
-    console.error("Order profit refresh: exchange rates unavailable:", String(error));
-    return 0;
-  }
-
-  const rates = deriveRates(rubPurchaseCostRate, cnyRateRub);
-  const rules = Array.isArray(db.reviewRules) ? db.reviewRules : [];
-  const now = new Date().toISOString();
-  let changed = 0;
-  for (const order of Array.isArray(db.orders) ? db.orders : []) {
-    const rule = findMatchingReviewRule(order, rules);
-    if (!rule) continue;
-    if (normalizeNullableNumber(order?.amount) === null) continue;
-    if (order.profitUpdatedAt) continue;
-    const profit = computeOrderProfit(order, rule, rates);
-    order.profitRmb = profit.profitRmb;
-    order.profitRub = profit.profitRub;
-    order.profitUpdatedAt = now;
-    Object.assign(order, {
-      matchedRuleId: profit.matchedRuleId,
-      matchedRuleName: profit.matchedRuleName,
-      purchaseCostRmb: profit.purchaseCostRmb,
-      purchaseCostRub: profit.purchaseCostRub,
-      commissionPercent: profit.commissionPercent,
-      commissionRmb: profit.commissionRmb,
-      commissionRub: profit.commissionRub,
-      logisticsFeeRmb: profit.logisticsFeeRmb,
-      logisticsFeeRub: profit.logisticsFeeRub,
-      otherFeeRmb: profit.otherFeeRmb,
-      otherFeeRub: profit.otherFeeRub,
-      packingFeeRmb: profit.packingFeeRmb,
-      packingFeeRub: profit.packingFeeRub,
-      withdrawPercent: profit.withdrawPercent,
-      withdrawFeeRmb: profit.withdrawFeeRmb,
-      withdrawFeeRub: profit.withdrawFeeRub,
-      transferPercent: profit.transferPercent,
-      transferFeeRmb: profit.transferFeeRmb,
-      transferFeeRub: profit.transferFeeRub
-    });
-    changed += 1;
-  }
-  if (changed > 0) {
-    await sqlWriters.saveOrdersToSql(db.orders);
-  }
-  return changed;
-}
-
-
-
-async function fetchCbrRate(currency) {
-  const now = Date.now();
-  if (cachedRates.payload && now - cachedRates.ts < 30 * 60 * 1000) {
-    return mapCbrRate(cachedRates.payload, currency);
-  }
-
-  try {
-    const result = await fetchJson(CBR_DAILY_JSON_URL);
-    if (!result.ok || !result.data) {
-      const stored = await fetchStoredCbrRate(currency);
-      return stored.ok ? stored : { ok: false, status: result.status, message: "Failed to fetch CBR rates" };
-    }
-    cachedRates = { ts: now, payload: result.data };
-    return mapCbrRate(result.data, currency);
-  } catch (error) {
-    const stored = await fetchStoredCbrRate(currency);
-    return stored.ok ? stored : { ok: false, status: 502, message: String(error) };
-  }
-}
-
-async function fetchStoredCbrRate(currency) {
-  if (String(currency || "").trim().toUpperCase() !== "CNY" || !sqlReady || !sqlPool) {
-    return { ok: false, status: 404, message: "Stored CBR rate unavailable" };
-  }
-  try {
-    const [rows] = await sqlPool.query(
-      `SELECT rateDate, cnyRateRub, source
-       FROM exchange_rates_daily
-       WHERE cnyRateRub IS NOT NULL AND cnyRateRub > 0
-       ORDER BY rateDate DESC
-       LIMIT 1`
-    );
-      const row = rows?.[0];
-      const rate = normalizeNullableNumber(row?.cnyRateRub);
-      if (rate !== null && rate > 0) {
-        const rateDate = String(row.rateDate || "");
-        const stale = !isExchangeRateFresh(rateDate, new Date(), CURRENCY_RATE_MAX_AGE_DAYS);
-        return {
-        ok: true,
-        stale,
-        warning: stale ? `Stored CBR rate is older than ${CURRENCY_RATE_MAX_AGE_DAYS} days` : "",
-        data: {
-          base: "RUB",
-          currency: "CNY",
-          rate,
-          date: rateDate,
-          source: String(row.source || "exchange_rates_daily")
-        }
-      };
-    }
-  } catch (error) {
-    console.error("MySQL CBR snapshot unavailable:", String(error));
-  }
-  return { ok: false, status: 404, message: "Stored CBR rate unavailable" };
-}
-
-async function fetchRubPurchaseCostRate() {
-  if (sqlReady && sqlPool) {
-    try {
-      const [rows] = await sqlPool.query(
-        `SELECT rateDate, rubPurchaseCostRate, source
-         FROM exchange_rates_daily
-         WHERE rubPurchaseCostRate IS NOT NULL AND rubPurchaseCostRate > 0
-         ORDER BY rateDate DESC
-         LIMIT 1`
-      );
-      const row = rows?.[0];
-      const rate = normalizeNullableNumber(row?.rubPurchaseCostRate);
-      if (rate !== null && rate > 0) {
-        return {
-          ok: true,
-          data: {
-            rate,
-            date: String(row.rateDate || ""),
-            source: String(row.source || "exchange_rates_daily")
-          }
-        };
-      }
-    } catch (error) {
-      console.error("MySQL exchange_rates_daily unavailable:", String(error));
-    }
-  }
-
-  const cbr = await fetchCbrRate("CNY");
-  const cnyRateRub = normalizeNullableNumber(cbr?.data?.rate);
-  if (cbr.ok && cnyRateRub !== null && cnyRateRub > 0) {
-    return {
-      ok: true,
-      data: {
-        rate: 1 / cnyRateRub,
-        date: String(cbr.data.date || ""),
-        source: "cbr-derived"
-      }
-    };
-  }
-  return { ok: false, status: 502, message: "RUB purchase cost rate unavailable" };
-}
-
-function mapCbrRate(payload, currency) {
-  if (!payload || !payload.Valute || !payload.Valute[currency]) {
-    return { ok: false, status: 404, message: `Currency ${currency} not found` };
-  }
-  const item = payload.Valute[currency];
-  const value = Number(item.Value);
-  const nominal = Number(item.Nominal || 1);
-  if (!Number.isFinite(value) || !Number.isFinite(nominal) || nominal <= 0) {
-    return { ok: false, status: 500, message: "Invalid rate data" };
-  }
-  const rate = value / nominal;
-  return {
-    ok: true,
-    data: {
-      base: "RUB",
-      currency,
-      rate,
-      date: payload.Date || payload.Timestamp || ""
-    }
-  };
-}
-
-
-
-
-
-
-
 
 
 function rotateInsecureDefaultAdmins(database) {
@@ -1848,487 +1523,6 @@ function normalizeOrderRecord(order) {
 
 
 
-
-
-
-
-
-
-
-
-// 刊登前评估本次要刊登的 SKU 的卡片质量分。优先实时拉取 Yandex，拉不到时回退到
-// 已存储的快照；既拉不到又没有快照的新品视为“无卡片可评估”，不拦截。
-async function evaluatePublishQualityGate(shop, offerIds, minScore = PUBLISH_QUALITY_MIN_SCORE) {
-  const ids = Array.from(new Set((Array.isArray(offerIds) ? offerIds : []).map((value) => String(value || "").trim()).filter(Boolean)));
-  if (!ids.length) {
-    return { offerRatings: new Map(), blockedOfferIds: new Set(), evaluated: false, fetchFailed: false };
-  }
-
-  const offerRatings = new Map();
-  let fetchFailed = false;
-  try {
-    for (let offset = 0; offset < ids.length; offset += 200) {
-      const chunk = ids.slice(offset, offset + 200);
-      const result = await fetchYandexOfferCards(String(shop?.businessId || ""), shop?.apiKey, { offerIds: chunk });
-      if (!result.ok) throw new Error(result.message || "offer cards failed");
-      for (const offer of Array.isArray(result.offers) ? result.offers : []) {
-        const offerId = String(offer?.offerId || "").trim();
-        const rating = Number(offer?.rating);
-        if (offerId && Number.isFinite(rating)) offerRatings.set(offerId, rating);
-      }
-    }
-  } catch (error) {
-    fetchFailed = true;
-  }
-
-  if (fetchFailed && isSqlReady() && getSqlPool() && String(shop?.id || "").trim()) {
-    try {
-      const stored = await readCardQualityByOffers(getSqlPool(), String(shop.id || ""), ids);
-      for (const row of Array.isArray(stored) ? stored : []) {
-        const offerId = String(row?.offerId || "").trim();
-        const rating = Number(row?.rating);
-        if (offerId && Number.isFinite(rating)) offerRatings.set(offerId, rating);
-      }
-    } catch (storedError) {
-      console.error("[quality-gate] stored card quality fallback failed:", String(storedError));
-    }
-  }
-
-  const blockedOfferIds = new Set();
-  for (const [offerId, rating] of offerRatings.entries()) {
-    if (rating < minScore) blockedOfferIds.add(offerId);
-  }
-  return { offerRatings, blockedOfferIds, evaluated: true, fetchFailed };
-}
-
-// 老产品不能动：只有已经成功/部分刊登过的才算老产品，不再参与质量拦截。
-// 其余全部按新刊登处理（包括从产品库复制过来的），刊登前先评估卡片质量分。
-function isExistingPublishProduct(item) {
-  const status = String(item?.lastPublishStatus || item?.publishStatus || "").trim().toLowerCase();
-  return status === "success" || status === "partial";
-}
-
-async function executeProductPublish(actorUser, items, fallbackShopId, shops, options = {}) {
-  let sourceItems = Array.isArray(items) ? items.filter(Boolean) : [];
-  for (const item of sourceItems) {
-    if (String(item?.source || "") === "yandex_online_product" && !String(item?.description || "").trim()) {
-      item.description = String(item?.title || item?.name || "").trim();
-      item.updatedAt = new Date().toISOString();
-    }
-  }
-  const enforceScope = options.enforceScope !== false;
-  const publishSettings = normalizePublishSettings(db.publishSettings || {});
-  const qualityMinScore = Number.isFinite(Number(publishSettings.qualityMinScore)) ? Number(publishSettings.qualityMinScore) : PUBLISH_QUALITY_MIN_SCORE;
-  if (publishSettings.dailyPublishLimit > 0) {
-    const today = new Date().toISOString().slice(0, 10);
-    const publishedToday = (db.publishProducts || []).filter((item) =>
-      String(item?.lastPublishStatus || item?.publishStatus || "") === "success" &&
-      String(item?.lastPublishAt || item?.publishAt || "").slice(0, 10) === today
-    ).length;
-    const remaining = Math.max(0, publishSettings.dailyPublishLimit - publishedToday);
-    if (sourceItems.length > remaining) {
-      return { statusCode: 429, payload: { message: `已达到每日刊登上限或本次数量超限：上限 ${publishSettings.dailyPublishLimit}，今日已刊登 ${publishedToday}，剩余 ${remaining}` } };
-    }
-  }
-  const grouped = new Map();
-  const shopResolveErrors = [];
-  for (const item of sourceItems) {
-    const resolvedShop = enforceScope
-      ? resolvePublishTargetShopId(actorUser, item, fallbackShopId, shops)
-      : resolvePublishTargetShopId(null, item, fallbackShopId, shops);
-    if (!resolvedShop.ok) {
-      shopResolveErrors.push({
-        id: String(item?.id || "").trim(),
-        sku: String(item?.sku || item?.vendorCode || "").trim(),
-        title: String(item?.title || "").trim(),
-        message: resolvedShop.message
-      });
-      continue;
-    }
-    item.shopId = resolvedShop.shopId;
-    if (!grouped.has(resolvedShop.shopId)) grouped.set(resolvedShop.shopId, []);
-    grouped.get(resolvedShop.shopId).push(item);
-  }
-  if (shopResolveErrors.length) {
-    const statusCode = shopResolveErrors.some((entry) => entry.message.startsWith("Forbidden")) ? 403 : 400;
-    const summary = shopResolveErrors
-      .slice(0, 3)
-      .map((entry) => `${entry.sku || entry.id || "Unnamed item"}: ${entry.message}`)
-      .join(" | ");
-    return {
-      statusCode,
-      payload: {
-        message: `Publish failed: ${summary || "请选择店铺（shopId）"}`,
-        errors: shopResolveErrors
-      }
-    };
-  }
-
-  const publishValidationErrors = sourceItems
-    .map((item) => ({
-      id: String(item?.id || "").trim(),
-      sku: String(item?.sku || item?.vendorCode || "").trim(),
-      title: String(item?.title || "").trim(),
-      validation: validatePublishProductForYandex(item, { requirePositiveStock: false })
-    }))
-    .filter((entry) => !entry.validation.ok)
-    .map((entry) => ({
-      id: entry.id,
-      sku: entry.sku,
-      title: entry.title,
-      missingFields: entry.validation.missingFields,
-      invalidFields: entry.validation.invalidFields,
-      variantErrors: entry.validation.errors || [],
-      message: entry.validation.message
-    }));
-  if (publishValidationErrors.length) {
-    const summary = publishValidationErrors
-      .slice(0, 3)
-      .map((entry) => `${entry.sku || entry.id || "Unnamed item"}: ${entry.message}`)
-      .join(" | ");
-    return {
-      statusCode: 400,
-      payload: {
-        message: `Publish failed: ${summary}`,
-        errors: publishValidationErrors
-      }
-    };
-  }
-
-  const rows = [];
-  const errors = [];
-  let success = 0;
-  let failed = 0;
-  for (const [shopId, groupedItems] of grouped.entries()) {
-    const shop = (shops || []).find((x) => String(x.id || "") === shopId);
-    if (!shop || shop.provider !== "yandex_market") {
-      failed += groupedItems.length;
-      const message = "店铺不存在或不是Yandex店铺";
-      rows.push({ shopId, success: 0, failed: groupedItems.length, message });
-      errors.push({ shopId, message });
-      continue;
-    }
-    if (!shop.businessId || !shop.apiKey) {
-      failed += groupedItems.length;
-      const message = "缺少businessId或apiKey";
-      rows.push({ shopId, success: 0, failed: groupedItems.length, message });
-      errors.push({ shopId, message });
-      continue;
-    }
-    const mapped = groupedItems.flatMap((item) => expandPublishProductToYandexPayloads(item));
-    if (!mapped.length) {
-      failed += groupedItems.length;
-      const message = "缺少有效的SKU或标题";
-      rows.push({ shopId, success: 0, failed: groupedItems.length, message });
-      errors.push({ shopId, message });
-      continue;
-    }
-    const newItems = groupedItems.filter((item) => !isExistingPublishProduct(item));
-    const newMapped = newItems.flatMap((item) => expandPublishProductToYandexPayloads(item));
-    const publishOfferIds = newMapped.map((entry) => String(entry.offerId || "").trim()).filter(Boolean);
-    const qualityGate = publishSettings.qualityGateEnabled && newMapped.length
-      ? await evaluatePublishQualityGate(shop, publishOfferIds, qualityMinScore)
-      : { offerRatings: new Map(), blockedOfferIds: new Set(), evaluated: false, fetchFailed: false };
-    const allowedMapped = groupedItems.flatMap((item) => {
-      const itemMapped = expandPublishProductToYandexPayloads(item);
-      return isExistingPublishProduct(item)
-        ? itemMapped
-        : itemMapped.filter((entry) => !qualityGate.blockedOfferIds.has(String(entry.offerId || "").trim()));
-    });
-    if (qualityGate.blockedOfferIds.size) {
-      errors.push({
-        shopId,
-        message: `卡片质量分低于 ${qualityMinScore}，已拦截刊登`,
-        stage: "quality",
-        details: Array.from(qualityGate.blockedOfferIds).map((offerId) => ({
-          offerId,
-          rating: qualityGate.offerRatings.get(offerId)
-        }))
-      });
-    } else if (qualityGate.fetchFailed && qualityGate.offerRatings.size === 0) {
-      errors.push({
-        shopId,
-        message: "无法评估卡片质量（Yandex 拉取失败且无历史快照），本次未做质量拦截",
-        stage: "quality"
-      });
-    }
-    if (!allowedMapped.length) {
-      failed += groupedItems.length;
-      const nowIso = new Date().toISOString();
-      for (const item of groupedItems) {
-        item.lastPublishAt = nowIso;
-        item.lastPublishStatus = "failed";
-        item.publishAt = nowIso;
-        item.publishStatus = "failed";
-        item.publishResultMessage = `卡片质量分低于 ${qualityMinScore}，未刊登`;
-        item.updatedAt = nowIso;
-      }
-      rows.push({ shopId, success: 0, failed: groupedItems.length, message: `卡片质量分低于 ${qualityMinScore}，全部拦截` });
-      continue;
-    }
-    if (publishSettings.simulateBackendPublishToYandex) {
-      const sequentialErrors = [];
-      let sequentialSuccess = 0;
-      let sequentialFailed = 0;
-      for (const item of groupedItems) {
-        if (sequentialSuccess + sequentialFailed > 0 && publishSettings.publishIntervalSeconds > 0) {
-          await new Promise((resolve) => setTimeout(resolve, publishSettings.publishIntervalSeconds * 1000));
-        }
-        const itemMappedAll = expandPublishProductToYandexPayloads(item);
-        const itemMapped = isExistingPublishProduct(item)
-          ? itemMappedAll
-          : itemMappedAll.filter((entry) => !qualityGate.blockedOfferIds.has(String(entry.offerId || "").trim()));
-        if (itemMappedAll.length && !itemMapped.length) {
-          sequentialFailed += 1;
-          const nowIso = new Date().toISOString();
-          item.lastPublishAt = nowIso;
-          item.lastPublishStatus = "failed";
-          item.publishAt = nowIso;
-          item.publishStatus = "failed";
-          item.publishResultMessage = `卡片质量分低于 ${qualityMinScore}，未刊登`;
-          item.updatedAt = nowIso;
-          sequentialErrors.push({
-            shopId,
-            message: `${String(item.sku || item.id || "Unnamed item")}: 卡片质量分低于 ${qualityMinScore}，未刊登`,
-            stage: "quality"
-          });
-          continue;
-        }
-        if (!itemMapped.length) {
-          sequentialFailed += 1;
-          item.lastPublishAt = new Date().toISOString();
-          item.lastPublishStatus = "failed";
-          item.publishAt = item.lastPublishAt;
-          item.publishStatus = "failed";
-          item.publishResultMessage = "缺少有效的SKU或标题";
-          item.updatedAt = item.lastPublishAt;
-          sequentialErrors.push({
-            shopId,
-            message: `${String(item.sku || item.id || "Unnamed item")}: 缺少有效的SKU或标题`
-          });
-          continue;
-        }
-        const yandexPublishResult = await publishYandexProducts({
-          shop,
-          products: itemMapped,
-          apiBase: YANDEX_MARKET_BASE_URL,
-          enrichProducts: enrichYandexItemsWithParameterValues
-        });
-        const mappingResult = yandexPublishResult.mapping;
-        if (!mappingResult.ok) {
-          sequentialFailed += itemMapped.length;
-          item.lastPublishAt = new Date().toISOString();
-          item.lastPublishStatus = "failed";
-          item.publishAt = item.lastPublishAt;
-          item.publishStatus = "failed";
-          item.publishResultMessage = mappingResult.message || "发布失败";
-          item.updatedAt = item.lastPublishAt;
-          sequentialErrors.push({
-            shopId,
-            message: `${String(item.sku || item.id || "Unnamed item")}: ${mappingResult.message || "发布失败"}`,
-            stage: "mapping",
-            details: mappingResult.failed || []
-          });
-          continue;
-        }
-        const priceResult = yandexPublishResult.price;
-        const stockResult = yandexPublishResult.stock;
-        const failedOfferIds = new Set([
-          ...(Array.isArray(mappingResult.failed) ? mappingResult.failed.map((x) => String(x.offerId || "").trim()) : []),
-          ...(Array.isArray(priceResult.failed) ? priceResult.failed.map((x) => String(x.offerId || "").trim()) : []),
-          ...(Array.isArray(stockResult.failed) ? stockResult.failed.map((x) => String(x.offerId || "").trim()) : [])
-        ].filter(Boolean));
-        const itemFailed = failedOfferIds.size;
-        const itemSuccess = Math.max(0, itemMapped.length - itemFailed);
-        const nowIso = new Date().toISOString();
-        item.lastPublishAt = nowIso;
-        item.updatedAt = nowIso;
-        item.lastPublishStatus = itemFailed === 0 ? "success" : itemSuccess > 0 ? "partial" : "failed";
-        item.publishAt = nowIso;
-        item.publishStatus = item.lastPublishStatus;
-        item.publishResultMessage = itemFailed === 0 ? "发布成功" : itemSuccess > 0 ? "部分成功" : "发布失败";
-        sequentialSuccess += itemSuccess;
-        sequentialFailed += itemFailed;
-        if (!priceResult.ok || !stockResult.ok || itemFailed > 0) {
-          const stageMessages = [];
-          if (!priceResult.ok) stageMessages.push(`price: ${priceResult.message || "price update failed"}`);
-          if (!stockResult.ok) stageMessages.push(`stock: ${stockResult.message || "stock update failed"}`);
-          sequentialErrors.push({
-            shopId,
-            message: `${String(item.sku || item.id || "Unnamed item")}: ${stageMessages.join(" | ") || "部分发布失败"}`,
-            details: { failedOffers: Array.from(failedOfferIds) }
-          });
-        }
-      }
-      success += sequentialSuccess;
-      failed += sequentialFailed;
-      rows.push({
-        shopId,
-        success: sequentialSuccess,
-        failed: sequentialFailed,
-        message: sequentialErrors.length ? "已按手动上架风格逐条调用 Yandex API，存在部分失败" : "已按手动上架风格逐条调用 Yandex API",
-        details: {
-          simulation: true,
-          mode: "sequential_api",
-          itemCount: groupedItems.length,
-          offerCount: allowedMapped.length
-        }
-      });
-      if (sequentialErrors.length) {
-        errors.push(...sequentialErrors);
-      }
-      continue;
-    }
-    const yandexPublishResult = await publishYandexProducts({
-      shop,
-      products: allowedMapped,
-      apiBase: YANDEX_MARKET_BASE_URL,
-      enrichProducts: enrichYandexItemsWithParameterValues
-    });
-    const mappingResult = yandexPublishResult.mapping;
-    if (!mappingResult.ok) {
-      failed += allowedMapped.length;
-      const message = mappingResult.message || "发布失败";
-      rows.push({ shopId, success: 0, failed: allowedMapped.length, message });
-      errors.push({ shopId, message, stage: "mapping", details: mappingResult.failed || [] });
-      continue;
-    }
-    const priceResult = yandexPublishResult.price;
-    const stockResult = yandexPublishResult.stock;
-    const failedOfferIds = new Set([
-      ...(Array.isArray(mappingResult.failed) ? mappingResult.failed.map((x) => String(x.offerId || "").trim()) : []),
-      ...(Array.isArray(priceResult.failed) ? priceResult.failed.map((x) => String(x.offerId || "").trim()) : []),
-      ...(Array.isArray(stockResult.failed) ? stockResult.failed.map((x) => String(x.offerId || "").trim()) : [])
-    ].filter(Boolean));
-    const shopFailed = failedOfferIds.size;
-    const shopSuccess = Math.max(0, allowedMapped.length - shopFailed);
-    const stageMessages = [];
-    if (!priceResult.ok) stageMessages.push(`price: ${priceResult.message || "price update failed"}`);
-    if (!stockResult.ok) stageMessages.push(`stock: ${stockResult.message || "stock update failed"}`);
-    const nowIso = new Date().toISOString();
-    const message = stageMessages.length ? `部分失败: ${stageMessages.join(" | ")}` : "发布成功";
-    for (const item of groupedItems) {
-      const itemOfferIds = expandPublishProductToYandexPayloads(item).map((entry) => String(entry.offerId || "").trim()).filter(Boolean);
-      const itemFailed = itemOfferIds.some((offerId) => failedOfferIds.has(offerId));
-      const itemSuccess = itemOfferIds.length > 0 && itemOfferIds.every((offerId) => !failedOfferIds.has(offerId));
-      const qualityBlockedCount = isExistingPublishProduct(item)
-        ? 0
-        : itemOfferIds.filter((offerId) => qualityGate.blockedOfferIds.has(offerId)).length;
-      item.lastPublishAt = nowIso;
-      item.lastPublishStatus = itemSuccess ? "success" : itemFailed ? "partial" : "failed";
-      item.publishAt = nowIso;
-      item.publishStatus = item.lastPublishStatus;
-      item.publishResultMessage = itemSuccess ? "发布成功" : itemFailed ? message : "发布失败";
-      if (qualityBlockedCount > 0) {
-        const qualityMessage = `卡片质量分低于 ${qualityMinScore}，未刊登（拦截 ${qualityBlockedCount} 个SKU）`;
-        item.publishResultMessage = itemSuccess ? qualityMessage : `${item.publishResultMessage}；${qualityMessage}`;
-        if (qualityBlockedCount === itemOfferIds.length) {
-          item.lastPublishStatus = "failed";
-          item.publishStatus = "failed";
-          item.publishResultMessage = qualityMessage;
-        } else if (!itemFailed) {
-          item.lastPublishStatus = "partial";
-          item.publishStatus = "partial";
-        }
-      }
-      item.updatedAt = nowIso;
-    }
-    success += shopSuccess;
-    failed += shopFailed;
-    rows.push({
-      shopId,
-      success: shopSuccess,
-      failed: shopFailed,
-      message,
-      details: {
-        mapping: { ok: mappingResult.ok, success: mappingResult.success || 0, failed: mappingResult.failed || [] },
-        price: { ok: priceResult.ok, success: priceResult.success || 0, failed: priceResult.failed || [], message: priceResult.message || "" },
-        stock: { ok: stockResult.ok, success: stockResult.success || 0, failed: stockResult.failed || [], message: stockResult.message || "" }
-      }
-    });
-    if (stageMessages.length || shopFailed > 0) {
-      errors.push({ shopId, message, details: { failedOffers: Array.from(failedOfferIds) } });
-    }
-  }
-  saveDatabase();
-  return {
-    statusCode: 200,
-    payload: {
-      success,
-      failed,
-      results: rows,
-      errors
-    }
-  };
-}
-
-async function executeOzonProductPublish(actorUser, items, fallbackShopId, shops) {
-  const grouped = new Map();
-  const errors = [];
-  for (const item of Array.isArray(items) ? items : []) {
-    const resolved = resolvePublishTargetShopId(actorUser, item, fallbackShopId, shops);
-    const shop = resolved.ok ? (shops || []).find((entry) => String(entry?.id || "") === resolved.shopId) : null;
-    if (!resolved.ok || !shop || String(shop.provider || "").toLowerCase() !== "ozon") {
-      errors.push({ id: item.id, sku: item.sku || "", message: resolved.message || "缺少有效的 Ozon 店铺" });
-      continue;
-    }
-    item.shopId = resolved.shopId;
-    if (!grouped.has(resolved.shopId)) grouped.set(resolved.shopId, []);
-    grouped.get(resolved.shopId).push(item);
-  }
-  let success = 0;
-  let processing = 0;
-  let failed = errors.length;
-  const results = [];
-  for (const [shopId, groupedItems] of grouped.entries()) {
-    const shop = (shops || []).find((entry) => String(entry?.id || "") === shopId);
-    const result = await publishOzonProducts(shop, groupedItems);
-    const now = new Date().toISOString();
-    if (!result.ok) {
-      failed += groupedItems.length;
-      groupedItems.forEach((item) => {
-        item.ozonPublishStatus = "failed";
-        item.ozonErrorMessage = result.message || "Ozon 发布失败";
-        item.publishStatus = "failed";
-        item.lastPublishStatus = "failed";
-        item.lastPublishAt = now;
-        item.publishAt = now;
-        item.publishResultMessage = item.ozonErrorMessage;
-        item.updatedAt = now;
-      });
-      results.push({ shopId, success: 0, processing: 0, failed: groupedItems.length, message: result.message, details: result.invalid || [] });
-      continue;
-    }
-    const byOfferId = new Map((result.items || []).map((entry) => [String(entry.offer_id || entry.offerId || "").trim(), entry]));
-    let shopSuccess = 0;
-    let shopProcessing = 0;
-    groupedItems.forEach((item) => {
-      const detail = byOfferId.get(String(item.sku || item.offerId || item.vendorCode || "").trim());
-      const detailStatus = String(detail?.status || detail?.state || "").toLowerCase();
-      const itemFailed = ["failed", "error", "cancelled"].includes(detailStatus) || Boolean(detail?.errors?.length);
-      const itemDone = ["imported", "success", "completed"].includes(detailStatus);
-      const itemStatus = itemFailed ? "failed" : itemDone ? "success" : "processing";
-      item.ozonPublishStatus = itemStatus;
-      item.ozonTaskId = result.taskId;
-      item.ozonProductId = detail?.product_id || detail?.productId || item.ozonProductId || "";
-      item.ozonPlatformSku = detail?.offer_id || detail?.offerId || item.ozonPlatformSku || "";
-      item.ozonErrorMessage = itemFailed ? (detail?.errors?.[0]?.message || detail?.error || "Ozon 发布失败") : "";
-      item.publishStatus = itemStatus;
-      item.lastPublishStatus = itemStatus;
-      item.lastPublishAt = now;
-      item.publishAt = now;
-      item.publishResultMessage = itemFailed ? item.ozonErrorMessage : itemDone ? "Ozon 发布成功" : "Ozon 任务处理中";
-      item.updatedAt = now;
-      if (itemFailed) failed += 1;
-      else if (itemDone) { success += 1; shopSuccess += 1; }
-      else { processing += 1; shopProcessing += 1; }
-    });
-    results.push({ shopId, taskId: result.taskId, success: shopSuccess, processing: shopProcessing, failed: groupedItems.length - shopSuccess - shopProcessing, timedOut: result.timedOut });
-  }
-  results.push(...errors.map((entry) => ({ ...entry, failed: 1 })));
-  saveDatabase();
-  return { statusCode: 200, payload: { success, processing, failed, results } };
-}
 
 
 
@@ -2803,6 +1997,27 @@ function isSqlConfigured() {
   return Boolean(mysql && MYSQL_HOST && MYSQL_DATABASE && MYSQL_USER && readMysqlPassword());
 }
 
+// order_purchases 是 orderPurchaseOverrides 的唯一载体：归属清单
+// （persistence/store-manifest.js）把这个键从 AppState 快照里剔除了，所以启动时必须由这张表
+// 重建内存数组。只把表行贴到「已存在」的订单上是不够的 —— 那样重启后覆盖集恒为空，
+// order-sync 的 applyOrderPurchaseOverrides 成为空操作，延迟采购单（为尚未同步到的订单预先
+// 登记的采购信息）在订单后来出现时贴不回去。
+//
+// 单独成函数，是为了让测试能**只重跑这段 hydrate**，而不必 closeAppRuntime() + 重跑整个
+// initializeAppRuntime()：那会关掉共享连接池，在 --test-isolation=none 下干扰同进程的其他
+// 测试文件（表现为间歇性的 "Pool is closed"）。
+async function hydrateOrderPurchaseOverridesFromSql() {
+  const [purchaseRows] = await sqlPool.query(
+    `SELECT orderRef, orderId, shopOrderNo, purchasePlatform, purchaseLink, purchaseOrderNo,
+            purchaseExpressNo, purchaseIntlNo, purchasePriceRmb, purchasePriceRub,
+            purchaseUpdatedAt, updatedAt
+     FROM order_purchases`
+  );
+  sqlPurchaseTableWasEmpty = Array.isArray(purchaseRows) && purchaseRows.length === 0;
+  db.orderPurchaseOverrides = buildOrderPurchaseOverridesFromRows(purchaseRows);
+  applyOrderPurchaseOverrides(db.orders || [], db.orderPurchaseOverrides);
+}
+
 async function initSqlPersistence() {
   if (!isSqlConfigured()) {
     throw new Error("MySQL persistence is required but MYSQL_* configuration is incomplete.");
@@ -2867,6 +2082,12 @@ async function initSqlPersistence() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
     `);
     for (const statement of REQUIRED_TABLE_DDLS) await sqlPool.query(statement);
+    await ensurePdevTables(sqlPool);
+    // 审计日志与费率目录的建表必须发生在任何 saveDatabase() 之前：saveDatabaseToSql() 会向
+    // 这两张表写入。这里直接用连接池执行 DDL（不能用 auditStore.ensureTable 之类的方法，
+    // 它们在 sqlReady 置真前会直接跳过）。
+    await sqlPool.query(AUDIT_TABLE_DDL);
+    await sqlPool.query(YANDEX_COMMISSION_CATALOG_DDL);
     const compatibilityAlters = [
       "ALTER TABLE users ADD COLUMN IF NOT EXISTS shopPermissions JSON NOT NULL",
       "ALTER TABLE users ADD COLUMN IF NOT EXISTS shopAssignments JSON NOT NULL",
@@ -2980,29 +2201,28 @@ async function initSqlPersistence() {
       } catch (orderError) {
         console.error("MySQL orders table unavailable, keeping AppState orders:", String(orderError));
       }
+      // 审计日志有自己的表（唯一归属），启动时取最近 AUDIT_MAX_RECORDS 条回内存。
+      // 因为已从快照剔除，normalizeDatabase 里的采购恢复拿不到日志，这里 hydrate 后必须重跑一次。
       try {
-        const [purchaseRows] = await sqlPool.query(
-          `SELECT orderRef, orderId, shopOrderNo, purchasePlatform, purchaseLink, purchaseOrderNo,
-                  purchaseExpressNo, purchaseIntlNo, purchasePriceRmb, purchasePriceRub,
-                  purchaseUpdatedAt, updatedAt
-           FROM order_purchases`
-        );
-        sqlPurchaseTableWasEmpty = Array.isArray(purchaseRows) && purchaseRows.length === 0;
-        if (Array.isArray(purchaseRows) && purchaseRows.length) {
-          const byRef = new Map();
-          for (const order of db.orders || []) {
-            byRef.set(String(order.id || "").trim(), order);
-            byRef.set(String(order.shopOrderNo || "").trim(), order);
-          }
-          for (const row of purchaseRows) {
-            const order = byRef.get(String(row.orderRef || row.orderId || row.shopOrderNo || "").trim()) || byRef.get(String(row.orderId || row.shopOrderNo || "").trim());
-            if (!order) continue;
-            for (const field of ORDER_PURCHASE_FIELDS) {
-              const value = String(row[field] || "");
-              if (value.trim()) order[field] = value;
-            }
-          }
+        const auditRows = await auditStore.loadRecent(AUDIT_MAX_RECORDS);
+        if (auditRows.length) {
+          db.auditLogs = auditRows;
+          restorePurchaseFromAuditLogs(db.orders, db.auditLogs);
         }
+        await auditStore.trimTo(AUDIT_MAX_RECORDS);
+      } catch (auditError) {
+        console.error("MySQL audit_logs table unavailable, keeping AppState audit logs:", String(auditError));
+      }
+      // Yandex 合法费率目录已改存单行表（不再进快照）。老库首次启动时表还是空的，
+      // 此时保留快照里的值，下一次 saveDatabase() 会把它写进表并从快照剔除。
+      try {
+        const catalog = await sqlWriters.loadYandexCommissionCatalogFromSql();
+        if (catalog) db.yandexCommissionCatalog = normalizeYandexCommissionCatalog(catalog);
+      } catch (catalogError) {
+        console.error("MySQL yandex_commission_catalog table unavailable, keeping AppState catalog:", String(catalogError));
+      }
+      try {
+        await hydrateOrderPurchaseOverridesFromSql();
       } catch (purchaseError) {
         console.error("MySQL order_purchases table unavailable, keeping order purchase fields:", String(purchaseError));
       }
@@ -3094,7 +2314,7 @@ async function syncYandexLegalCommissionCatalog() {
   let source = "yandex_legal";
   let warning = "";
   try {
-    const response = await fetch(links.ru, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const response = await fetch(links.ru, withFetchTimeout({ headers: { "User-Agent": "Mozilla/5.0" } }));
     if (!response.ok) {
       warning = `Legal page fetch failed: ${response.status}`;
     } else {
@@ -3409,11 +2629,19 @@ function seedUserForTest(user) {
   return user;
 }
 
+// Test hook: orderPurchaseOverrides 是表属主实体，serializeDatabase() 的快照里按归属清单
+// 剔除了它，所以「启动是否真的把 order_purchases 回填进内存」这件事只能单独读取来断言。
+function exportOrderPurchaseOverridesForTest() {
+  return Array.isArray(db?.orderPurchaseOverrides) ? db.orderPurchaseOverrides : [];
+}
+
 module.exports = {
   closeAppRuntime,
   coerceEnabledFlag,
   createApp,
+  exportOrderPurchaseOverridesForTest,
   exportSerializedDatabaseForTest,
+  hydrateOrderPurchaseOverridesFromSql,
   extractFreshLogEntries,
   initializeAppRuntime,
   readMysqlPassword,

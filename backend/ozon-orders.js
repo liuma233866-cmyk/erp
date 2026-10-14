@@ -1,4 +1,5 @@
 const OZON_API_BASE = "https://api-seller.ozon.ru";
+const { withFetchTimeout } = require("./http-timeout");
 function parseOzonDate(value, fallback) {
   const raw = String(value || "").trim();
   const match = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
@@ -108,11 +109,11 @@ async function fetchOzonFbsOrders(clientId, apiKey, options = {}) {
   for (let offset = 0, page = 0; page < 100; offset += limit, page += 1) {
     let response;
     try {
-      response = await request(`${OZON_API_BASE}/v3/posting/fbs/list`, {
+      response = await request(`${OZON_API_BASE}/v3/posting/fbs/list`, withFetchTimeout({
         method: "POST",
         headers: { "Client-Id": String(clientId), "Api-Key": String(apiKey), "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ dir: "ASC", filter: { since, to }, limit, offset, with: { analytics_data: true, barcodes: true, financial_data: true } })
-      });
+      }));
     } catch (error) {
       return { ok: false, status: 502, items: [], message: `Ozon request failed: ${String(error?.message || error)}` };
     }

@@ -2,6 +2,7 @@ const fs = require("fs");
 const http = require("http");
 const https = require("https");
 const path = require("path");
+const { defaultHttpTimeoutMs, withFetchTimeout } = require("./http-timeout");
 
 const STATIC_DIR = path.join(__dirname, "..", "frontend");
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "http://127.0.0.1:3000,http://localhost:3000")
@@ -202,7 +203,7 @@ function buildSessionCookie(token, maxAgeSeconds, isSecure = isSecureCookieEnabl
 
 function fetchJson(targetUrl) {
   if (typeof fetch === "function") {
-    return fetch(targetUrl, { headers: { Accept: "application/json" } })
+    return fetch(targetUrl, withFetchTimeout({ headers: { Accept: "application/json" } }))
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         return { ok: res.ok, status: res.status, data };
@@ -233,6 +234,10 @@ function fetchJson(targetUrl) {
         settle({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: parsed });
       });
       res.on("error", (err) => settle({ ok: false, status: 502, data: null, error: String(err) }));
+    });
+    // 没有超时的话，对端不响应就会让这个 Promise 永远不 settle（调用方是定时汇率任务）。
+    req.setTimeout(defaultHttpTimeoutMs(), () => {
+      req.destroy(new Error("request timeout"));
     });
     req.on("error", (err) => settle({ ok: false, status: 502, data: null, error: String(err) }));
   });

@@ -606,8 +606,11 @@ function renderAiImageTaskDetail(task) {
     aiImageTaskDetailStatus.textContent = statusLabel;
   }
   if (aiImageTaskSourcePreview) {
-    if (sourceUrl) {
-      aiImageTaskSourcePreview.src = sourceUrl;
+    // 图片地址统一走项目自己的 http(s) 白名单（其余页面都这么做，这里原先漏了）：
+    // 这些 URL 来自采集/平台侧数据，HTML 转义挡不住 javascript:/data: 载荷。
+    const safeSourceUrl = sourceUrl ? safeImageUrl(sourceUrl) : "";
+    if (safeSourceUrl) {
+      aiImageTaskSourcePreview.src = safeSourceUrl;
       aiImageTaskSourcePreview.classList.remove("hidden");
     } else {
       aiImageTaskSourcePreview.removeAttribute("src");
@@ -615,8 +618,9 @@ function renderAiImageTaskDetail(task) {
     }
   }
   if (aiImageTaskResultPreview) {
-    if (resultUrl) {
-      aiImageTaskResultPreview.src = resultUrl;
+    const safeResultUrl = resultUrl ? safeImageUrl(resultUrl) : "";
+    if (safeResultUrl) {
+      aiImageTaskResultPreview.src = safeResultUrl;
       aiImageTaskResultPreview.classList.remove("hidden");
     } else {
       aiImageTaskResultPreview.removeAttribute("src");
@@ -752,7 +756,7 @@ function renderAiImageTasks() {
         <td>
           <div class="ai-task-source-cell">
             <div>${escapeHtml(sourceLabel)}</div>
-            ${skuLabel ? `<span class="small-text">SKU：${escapeHtml(skuLabel)}</span>` : ""}
+            ${skuLabel ? `<span class="small-text">店铺SKU：${escapeHtml(skuLabel)}</span>` : ""}
             ${safeExternalUrl(sourceLink) ? `<a href="${escapeHtml(safeExternalUrl(sourceLink))}" target="_blank" rel="noopener noreferrer">${escapeHtml(sourceLink)}</a>` : "<span class='small-text'>未填写源图片</span>"}
           </div>
         </td>
@@ -911,7 +915,8 @@ function closeAiImageTaskLogModal() {
 
 function setAiImageTaskResultImage(image, emptyLabel, url) {
   if (!image || !emptyLabel) return;
-  const imageUrl = String(url || "").trim();
+  // 同 setUpAiImageTaskDetail：非 http(s) 地址一律当作"没有图片"，退回占位文案。
+  const imageUrl = safeImageUrl(String(url || "").trim());
   if (imageUrl) {
     image.src = imageUrl;
     image.classList.remove("hidden");

@@ -92,9 +92,8 @@ async function loadPublishProducts() {
     state.publishPageSize = Number(publishPageSize.value || DEFAULT_PUBLISH_PAGE_SIZE) || DEFAULT_PUBLISH_PAGE_SIZE;
   }
   state.publishCurrentPage = 1;
-  state.publishSelectedIds = (state.publishSelectedIds || []).filter((id) =>
-    state.publishProducts.some((item) => String(item.id) === String(id))
-  );
+  // 收敛到当前页签可见的行，而不是只判断「整表里是否还存在」。
+  prunePublishSelectionToWorkspace();
   renderPublishTable();
   renderPublishPagination();
   syncPublishIslandScrollbarMetrics();
@@ -169,6 +168,18 @@ function getPublishWorkspaceItems() {
     return yandexItems.filter((item) => getYandexPublishStatusGroup(item) === filter);
   }
   return items;
+}
+
+// 选择集收敛到「当前页签可见」的行。批量删除/改库存此前直接发送 state.publishSelectedIds，
+// 于是切换页签后仍会作用在另一个页签里已经看不见的行上（状态筛选那条路径本来就是清空选择集的，
+// 只有页签切换漏了）。按页签收敛而非按当前页，所以跨页选择仍然保留。
+function prunePublishSelectionToWorkspace() {
+  const visible = new Set(
+    getPublishWorkspaceItems()
+      .map((item) => String(item?.id || "").trim())
+      .filter(Boolean)
+  );
+  state.publishSelectedIds = (state.publishSelectedIds || []).filter((id) => visible.has(String(id || "").trim()));
 }
 
 function getYandexPublishStatusGroup(item) {
@@ -263,6 +274,21 @@ function fillPublishSettingsForm() {
   }
 }
 
+// 加载设置失败时把表单锁死。此时 state.publishSettings 要么是硬编码默认值（首次加载，
+// 见 shared/core/state.js）、要么是上一次的旧值 —— 两者都不能当成「当前设置」呈现，更不能
+// 让一次点击把它们写回服务端覆盖真实配置（例如默认值里的「自动发布到 Yandex = 开启」）。
+// 注意只锁输入控件与「保存」；「取消」是 type=button，保留可用以便退出（头部「关闭」本来
+// 也在表单之外）。
+function setPublishSettingsFormDisabled(disabled) {
+  const locked = Boolean(disabled);
+  if (publishSettingsForm) {
+    publishSettingsForm.querySelectorAll("input, select, textarea").forEach((field) => {
+      field.disabled = locked;
+    });
+  }
+  if (savePublishSettingsBtn) savePublishSettingsBtn.disabled = locked;
+}
+
 async function openPublishSettingsModal() {
   if (!publishSettingsModalMask) return;
   if (publishSettingsModalMessage) {
@@ -270,10 +296,13 @@ async function openPublishSettingsModal() {
     publishSettingsModalMessage.textContent = "正在加载设置...";
   }
   const ok = await loadPublishSettings();
-  fillPublishSettingsForm();
+  // 只有加载成功才把服务端值填进表单；失败时既不填（避免把默认值/旧值当成当前设置呈现），
+  // 也不允许保存（避免把未经验证的值写回服务端）。
+  setPublishSettingsFormDisabled(!ok);
+  if (ok) fillPublishSettingsForm();
   if (publishSettingsModalMessage) {
     publishSettingsModalMessage.style.color = ok ? "#5f7390" : "#c02030";
-    publishSettingsModalMessage.textContent = ok ? "" : "加载设置失败";
+    publishSettingsModalMessage.textContent = ok ? "" : "加载设置失败，表单已锁定以免覆盖服务端配置；请关闭后重试";
   }
   publishSettingsModalMask.classList.remove("hidden");
 }
@@ -287,8 +316,7 @@ function onPublishSettingsMaskClick(event) {
   if (event.target === publishSettingsModalMask) closePublishSettingsModal();
 }
 
-async function onPublishSettingsSubmit(event) {
-  event.preventDefault();
+async function savePublishSettingsFromForm() {
   const skuPrefixByShopId = {};
   publishShopPrefixList?.querySelectorAll?.("[data-publish-shop-prefix]").forEach((input) => {
     const shopId = String(input.dataset.publishShopPrefix || "").trim();
@@ -332,7 +360,12 @@ async function onPublishSettingsSubmit(event) {
     skuSeparator: String(result.data?.settings?.skuSeparator || "-"),
     skuIncludeSourceSku: result.data?.settings?.skuIncludeSourceSku !== false,
     publishIntervalSeconds: Number(result.data?.settings?.publishIntervalSeconds || 0),
-    dailyPublishLimit: Number(result.data?.settings?.dailyPublishLimit || 0)
+    dailyPublishLimit: Number(result.data?.settings?.dailyPublishLimit || 0),
+    // 这两个字段此前漏写：提交时有、回写时没有，于是保存成功后 state.publishSettings
+    // 缺失质量门禁配置（要靠下次打开弹窗重新 GET 才补回来）。
+    // 语义与 loadPublishSettings() 保持一致。
+    qualityGateEnabled: result.data?.settings?.qualityGateEnabled !== false,
+    qualityMinScore: Number(result.data?.settings?.qualityMinScore ?? 80)
   };
   if (publishSettingsModalMessage) {
     publishSettingsModalMessage.style.color = "#1d6f3a";
@@ -342,6 +375,25 @@ async function onPublishSettingsSubmit(event) {
   if (publishMessage) {
     publishMessage.style.color = "#1d6f3a";
     publishMessage.textContent = "产品上架设置已更新";
+  }
+}
+
+// 在途守卫：双击「保存」或慢请求会先后发出两个 PUT。设置是全量覆盖，重复提交会把两次表单快照
+// 依次写回服务端，后一次可能覆盖掉前一次之后别人做的改动。第二次直接报错返回，不再发请求。
+async function onPublishSettingsSubmit(event) {
+  event.preventDefault();
+  if (isSavingPublishSettings) {
+    if (publishSettingsModalMessage) {
+      publishSettingsModalMessage.style.color = "#c02030";
+      publishSettingsModalMessage.textContent = "正在保存设置，请勿重复提交";
+    }
+    return;
+  }
+  isSavingPublishSettings = true;
+  try {
+    await savePublishSettingsFromForm();
+  } finally {
+    isSavingPublishSettings = false;
   }
 }
 
@@ -826,7 +878,7 @@ function onPublishWorkspaceTabClick(event) {
   if (!btn) return;
   state.publishWorkspaceTab = normalizePublishWorkspaceTab(btn.dataset.publishTab);
   state.publishCurrentPage = 1;
-  state.publishSelectedIds = state.publishSelectedIds || [];
+  prunePublishSelectionToWorkspace();
   updatePublishWorkspaceUi();
   renderPublishShopOptions();
   renderPublishTable();
@@ -1175,6 +1227,15 @@ async function onPublishToYandex() {
     });
     return;
   }
+  // Ozon 与「Yandex 面板未加载」都走这条通用分支。它此前没有任何在途守卫：双击或慢请求会提交
+  // 两次刊登，在平台侧产生重复 offer（Yandex 面板那条路径另有自己的 publishing 守卫）。
+  if (isPublishingProducts) {
+    if (publishMessage) {
+      publishMessage.style.color = "#c02030";
+      publishMessage.textContent = "正在发布，请勿重复提交";
+    }
+    return;
+  }
   const endpoint = isOzon ? "/api/product-publish/publish-ozon" : "/api/product-publish/publish-yandex";
   const platformLabel = isOzon ? "Ozon" : "Yandex";
   const shopId = String(publishShopSelect?.value || "").trim();
@@ -1197,10 +1258,16 @@ async function onPublishToYandex() {
     }
     return;
   }
-  const result = await apiRequest(endpoint, {
-    method: "POST",
-    body: JSON.stringify({ ids: publishIds, shopId })
-  });
+  isPublishingProducts = true;
+  let result;
+  try {
+    result = await apiRequest(endpoint, {
+      method: "POST",
+      body: JSON.stringify({ ids: publishIds, shopId })
+    });
+  } finally {
+    isPublishingProducts = false;
+  }
   if (!result.ok) {
     if (publishMessage) {
       publishMessage.style.color = "#c02030";
@@ -1285,6 +1352,7 @@ const publishSettingsModalMask = document.getElementById("publishSettingsModalMa
 const closePublishSettingsModalBtn = document.getElementById("closePublishSettingsModalBtn");
 const cancelPublishSettingsBtn = document.getElementById("cancelPublishSettingsBtn");
 const publishSettingsForm = document.getElementById("publishSettingsForm");
+const savePublishSettingsBtn = document.getElementById("savePublishSettingsBtn");
 const publishAutoToYandexToggle = document.getElementById("publishAutoToYandexToggle");
 const publishAutoToOzonToggle = document.getElementById("publishAutoToOzonToggle");
 const publishSimulateToggle = document.getElementById("publishSimulateToggle");
@@ -1311,6 +1379,9 @@ let isSyncingPublishScroll = false;
 let isDraggingPublishScrollbar = false;
 let publishScrollbarDragStartX = 0;
 let publishScrollbarDragStartLeft = 0;
+// 在途守卫（防重复提交）：刊登重复提交会在平台侧产生重复 offer；库存是增量操作，重复提交会加两次。
+let isSavingPublishSettings = false;
+let isPublishingProducts = false;
 
 function bindPublishProductsEvents() {
   if (publishRefreshBtn) publishRefreshBtn.addEventListener("click", loadPublishProducts);

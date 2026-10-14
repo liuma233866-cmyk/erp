@@ -3,8 +3,10 @@ const ROLE_OPERATIONS = "operations";
 const ROLE_SUPPORT = "support";
 const ROLE_FINANCE = "finance";
 const ROLE_SUPERVISOR = "supervisor";
-const ALL_ROLES = [ROLE_ADMIN, ROLE_OPERATIONS, ROLE_SUPPORT, ROLE_FINANCE, ROLE_SUPERVISOR];
-const SHOP_RESTRICTED_ROLES = new Set([ROLE_OPERATIONS, ROLE_SUPPORT, ROLE_FINANCE]);
+// 商品管理（product_dev）的编辑角色：产品开发。只它和 admin 能改商品库，其余角色只读。
+const ROLE_PRODUCT_DEV = "product_dev";
+const ALL_ROLES = [ROLE_ADMIN, ROLE_OPERATIONS, ROLE_SUPPORT, ROLE_FINANCE, ROLE_SUPERVISOR, ROLE_PRODUCT_DEV];
+const SHOP_RESTRICTED_ROLES = new Set([ROLE_OPERATIONS, ROLE_SUPPORT, ROLE_FINANCE, ROLE_PRODUCT_DEV]);
 
 const PERMISSIONS = {
   [ROLE_ADMIN]: new Set([
@@ -30,6 +32,7 @@ const PERMISSIONS = {
     "message.create",
     "product.ai",
     "ai.config",
+    "pdev.write",
     "audit.read"
   ]),
   [ROLE_OPERATIONS]: new Set([
@@ -45,6 +48,11 @@ const PERMISSIONS = {
     "message.create",
     "product.ai",
     "ai.config"
+  ]),
+  [ROLE_PRODUCT_DEV]: new Set([
+    "product.read",
+    "product.ai",
+    "pdev.write"
   ]),
   [ROLE_SUPPORT]: new Set(["order.read", "order.update_status", "product.read", "message.read", "message.create", "product.ai"]),
   [ROLE_FINANCE]: new Set(["order.read", "product.read", "message.read", "message.create", "product.ai"]),
@@ -129,6 +137,7 @@ module.exports = {
   ROLE_ADMIN,
   ROLE_FINANCE,
   ROLE_OPERATIONS,
+  ROLE_PRODUCT_DEV,
   ROLE_SUPERVISOR,
   ROLE_SUPPORT,
   SHOP_RESTRICTED_ROLES,

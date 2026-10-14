@@ -14,45 +14,73 @@ async function loadDashboardData() {
   await switchPanel(resolveInitialPanelId(), { persist: false, replaceRoute: true });
 }
 
-async function loadDashboardOrders() {
+// 仪表盘数据来自后端聚合接口 /api/orders/summary。
+//
+// 这里曾经是 apiRequest("/api/orders")：不带 page/pageSize 时列表接口会返回**整张** orders 表
+// （见 backend/pagination.js），于是每次进面板都要把全部订单下载到浏览器、再在前端把
+// KPI / 折线序列 / Top10 / 柱状图各聚合一遍。现在聚合在后端一次算完
+// （backend/order-summary.js 与其差异测试），前端只收结果。
+async function loadDashboardSummary() {
   if (!can("orderRead")) {
-    state.dashboardOrders = [];
+    dashboardState.summary = null;
+    dashboardState.summaryError = "";
+    updateReportStats();
+    renderDashboard();
     return;
   }
-  const result = await apiRequest("/api/orders", { method: "GET" });
-  state.dashboardOrders = result.ok && Array.isArray(result.data?.items)
-    ? result.data.items.map(normalizeOrderForView)
-    : [];
+  const result = await apiRequest("/api/orders/summary", { method: "GET" });
+  const loaded = Boolean(result.ok && result.data && result.data.summary && Array.isArray(result.data.platforms));
+  dashboardState.summary = loaded ? result.data : null;
+  // 拿到（或失败）之后立刻重算，否则 KPI 会停在进入面板时的那组占位数字上。
+  dashboardState.summaryError = loaded ? "" : String(result.error || "仪表盘数据加载失败");
+  updateReportStats();
+  renderDashboard();
 }
 
-function getDashboardOrders() {
-  return Array.isArray(state.dashboardOrders) && state.dashboardOrders.length
-    ? state.dashboardOrders
-    : state.orders || [];
+function getDashboardBucket() {
+  const platforms = dashboardState.summary && Array.isArray(dashboardState.summary.platforms)
+    ? dashboardState.summary.platforms
+    : [];
+  return platforms.find((bucket) => bucket.key === dashboardState.platform)
+    || platforms.find((bucket) => bucket.key === "all")
+    || null;
+}
+
+function emptySeries() {
+  return { labels: [], orderSeries: [], paidSeries: [], refundSeries: [] };
 }
 
 function renderDashboard() {
-  const orders = filterOrdersByPlatform(getDashboardOrders(), dashboardState.platform);
-  const series = buildSeries(orders, dashboardState.period);
-  renderChart(series);
-  renderTop10(orders);
-  renderBarCharts();
+  // 后端已按「平台 × 周期」算好全部序列，所以切页签只是重渲染，不再发请求。
+  const bucket = getDashboardBucket();
+  renderChart((bucket && bucket.series && bucket.series[dashboardState.period]) || emptySeries());
+  renderTop10((bucket && bucket.topShops) || []);
+  renderBarCharts(bucket);
 }
 
 function updateReportStats() {
-  const items = state.orders || [];
-  const today = new Date().toDateString();
-  const todayCount = items.filter((item) => new Date(item.createdAt).toDateString() === today).length;
-  const amount = items.reduce((sum, item) => sum + getRubAmount(item), 0);
-  const shippedCount = items.filter((item) => item.status === "shipped").length;
-  const shippedPercent = items.length ? (shippedCount / items.length) * 100 : 0;
+  // 这三个数字是「全站口径」，直接取后端聚合结果。
+  // 历史上这里走过两次弯路：先是读 state.orders（只有一页 50 条），后来即使读了全量，
+  // 也仍然要把整张表下载到浏览器再自己算。现在口径只有一处实现。
+  const stats = dashboardState.summary ? dashboardState.summary.summary : null;
+  const ready = Boolean(stats);
+  const hint = dashboardState.summaryError || "正在加载仪表盘数据…";
 
-  if (todayOrders) todayOrders.textContent = String(todayCount);
-  if (totalAmount) totalAmount.textContent = `₽${amount.toFixed(2)}`;
-  if (shippedRate) shippedRate.textContent = `${shippedPercent.toFixed(0)}%`;
+  if (todayOrders) {
+    todayOrders.textContent = ready ? String(stats.todayCount) : "—";
+    todayOrders.title = ready ? "" : hint;
+  }
+  if (totalAmount) {
+    totalAmount.textContent = ready ? `₽${Number(stats.amountRub || 0).toFixed(2)}` : "—";
+    totalAmount.title = ready ? "" : hint;
+  }
+  if (shippedRate) {
+    shippedRate.textContent = ready ? `${Number(stats.shippedPercent || 0).toFixed(0)}%` : "—";
+    shippedRate.title = ready ? "" : hint;
+  }
 }
 
-// 从 app.js 迁出的仪表盘页签与 Top10 渲染。
+// 仪表盘页签与 Top10 渲染。
 
 function onPlatformTabClick(event) {
   const btn = event.target.closest("button[data-platform]");
@@ -70,38 +98,36 @@ function onPeriodTabClick(event) {
   renderDashboard();
 }
 
-function renderTop10(orders) {
+// 参数改为后端算好的 Top10（[{ shopName, amountRub }]，已倒序取前 10）。
+function renderTop10(topShops) {
   if (!top10List) return;
-  const totals = new Map();
-  for (const order of orders) {
-    const shopName = String(order.shopName || "").trim() || "未命名店铺";
-    const amount = getRubAmount(order);
-    totals.set(shopName, (totals.get(shopName) || 0) + amount);
-  }
-  const items = Array.from(totals.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
+  const items = Array.isArray(topShops) ? topShops : [];
   if (!items.length) {
     top10List.innerHTML = "<li>暂无数据</li>";
     return;
   }
   top10List.innerHTML = items
-    .map(([name, amount], index) => {
+    .map((item, index) => {
       const rank = String(index + 1).padStart(2, "0");
       const color = index === 0 ? "red" : "green";
-      return `<li><span class="rank ${color}">${rank}</span><span>${escapeHtml(name)}</span><span class="amount">₽${amount.toFixed(2)}</span></li>`;
+      // 店铺名来自平台数据，必须转义后再进 innerHTML。
+      return `<li><span class="rank ${color}">${rank}</span><span>${escapeHtml(item.shopName)}</span><span class="amount">₽${Number(item.amountRub || 0).toFixed(2)}</span></li>`;
     })
     .join("");
 }
 
-// 从 app.js 下沉的 DOM 常量与事件绑定。
+// DOM 常量与事件绑定。
 
 const platformTabs = document.getElementById("platformTabs");
 const periodTabs = document.getElementById("periodTabs");
 const top10List = document.getElementById("top10List");
 const dashboardState = {
   platform: "all",
-  period: "day"
+  period: "day",
+  // 后端聚合结果 { summary, platforms }；null 表示尚未拿到或加载失败。
+  // KPI 是全站口径，在 summary 到位之前一律显示占位符，绝不用当前分页的数字顶替。
+  summary: null,
+  summaryError: ""
 };
 const todayOrders = document.getElementById("todayOrders");
 const totalAmount = document.getElementById("totalAmount");

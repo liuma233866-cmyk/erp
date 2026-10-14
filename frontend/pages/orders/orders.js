@@ -294,6 +294,83 @@ function getCustomerOrderStatusDisplay(order) {
   return labels[code] || null;
 }
 
+// 商品管理（pdev）SKU 索引 + SKU关系管理 绑定关系索引：用于订单行显示「商品SKU」+ 预估利润取采购价
+// 【task-15】取数顺序 = **绑定关系优先、同码兜底**：
+//   ① GET /api/product-dev/products → publicId(lower) → { sku, purchasePrice }（同码兜底 + 采购价来源）
+//   ② GET /api/pdev-links          → offerId / marketSku / onlineProductId（lower + trim）
+//                                      → { sku: pdevSku, purchasePrice }，后写入 → 覆盖①里同 key 的项 = 绑定优先
+//   ③ 两条都没有 → 返回 ""（页面显示 -）
+// 【task-26】索引已抽到 shared/core/pdev-sku-index.js 的**单一命名空间 window.PdevSkuIndex**
+//   （以前 orders.js / product-list.js / online-products.js 各自一份同名裸全局，互相覆盖）。
+//   这里只留薄封装：索引变量与加载函数都收进共享命名空间，本文件不再有同名的裸全局。
+function pdevSkuFor(shopSku) {
+  return window.PdevSkuIndex ? window.PdevSkuIndex.skuFor(shopSku) : "";
+}
+
+// ==================================================================
+// 【task-17】佣金比例索引：来自绑定关系（GET /api/pdev-links 的 commissionPercent）
+//   口径实测（只读 SQL，见汇报）：online_products.commissionPercent 是 DECIMAL(10,4) 的**百分数**
+//   —— 1529 条里 1442 条非 0，取值 13.0000 ~ 33.0000，无一条 ≥ 100、无 (0,1) 之间的值，
+//   所以 26 表示 26%（计算时要 ÷100）。
+//   key 与 pdevSkuFor 的绑定索引完全一致（offerId / marketSku / onlineProductId，trim+小写），
+//   这样「哪一行用了哪条绑定」和「该用多少佣金」天然对齐；没有绑定/没有佣金值 → 佣金按 0。
+// 【task-26】佣金索引与 SKU 索引现在都在 shared/core/pdev-sku-index.js，且**共用同一次** /api/pdev-links
+//   响应（之前 orders.js 自己再拉一次）；这里只留薄封装，本文件不再有同名的裸全局。
+// ==================================================================
+function pdevCommissionPercentFor(shopSku) {
+  return window.PdevSkuIndex ? window.PdevSkuIndex.commissionPercentFor(shopSku) : 0;
+}
+
+// 预估利润：订单金额 − 采购价(￥)×汇率 − 佣金（【task-17】佣金 = 订单金额 × 佣金比例）
+function pdevEstimateFor(orderId, amountForeign) {
+  const el = document.querySelector('[data-pdev-est-order="' + orderId + '"]');
+  if (!el) return null;
+  const shopSku = String(el.getAttribute('data-shop-sku') || '').trim().toLowerCase();
+  // 【task-26】采购价从共享索引取（原全局索引的 { sku, purchasePrice } 形态）
+  const purchasePrice = window.PdevSkuIndex ? window.PdevSkuIndex.purchasePriceFor(shopSku) : 0;
+  if (!purchasePrice) return null;                          // 没有采购价 → 算不了
+  // 汇率：优先从本元素的 data-profit-rmb/rub 反推（【task-15】这两个属性之前只在代码里读、没渲染出来，
+  // 导致预估利润恒为 -；现在渲染时写上了），兼容旧的 wrap 容器写法（[data-order-detail] / 父元素）
+  const wrap = el.closest('[data-order-detail]') || el.parentElement;
+  let rate = 0;
+  const readAttr = (attr) => {
+    const own = el.getAttribute(attr);
+    if (own !== null && String(own).trim() !== "") return own;
+    return wrap ? wrap.getAttribute(attr) : null;
+  };
+  const profRub = Number(String(readAttr('data-profit-rub') || '').replace(/[^0-9.]/g, ''));
+  const profRmb = Number(String(readAttr('data-profit-rmb') || '').replace(/[^0-9.]/g, ''));
+  if (profRub > 0 && profRmb > 0) rate = profRub / profRmb;
+  if (!rate) return null;                                   // 没有汇率 → 算不了
+  const amount = Number(amountForeign) || 0;
+  // 【task-17】佣金 = 订单金额 × 佣金比例（commissionPercent 是百分数，26 表示 26% → ÷100）
+  const commissionPercent = pdevCommissionPercentFor(shopSku);   // 没有绑定/没有佣金值 → 0
+  const commissionRub = amount * (commissionPercent / 100);
+  const purchaseRub = purchasePrice * rate;
+  const profitRub = amount - purchaseRub - commissionRub;
+  return {
+    rub: profitRub, rmb: profitRub / rate,
+    // 以下字段不进 DOM，仅供人工核对算式
+    amount: amount, rate: rate, purchasePrice: purchasePrice, purchaseRub: purchaseRub,
+    commissionPercent: commissionPercent, commissionRub: commissionRub
+  };
+}
+function fillPdevEstimates() {
+  document.querySelectorAll('[data-pdev-est]').forEach((el) => {
+    const rubEl = el.querySelector('[data-pdev-est-rub]');
+    const rmbEl = el.querySelector('[data-pdev-est-rmb]');
+    const res = pdevEstimateFor(el.getAttribute('data-pdev-est-order'), el.getAttribute('data-amount'));
+    if (!rubEl || !rmbEl) return;
+    if (!res) { rubEl.textContent = '-'; rmbEl.textContent = '-'; return; }
+    rubEl.textContent = res.rub.toFixed(2);
+    rmbEl.textContent = res.rmb.toFixed(2);
+  });
+}
+// 【task-26】采购价/佣金到位后要重算一次预估利润：由本文件**主动注册**回调，
+// 共享索引不反向依赖页面文件里的函数（避免跨文件前向引用 / 加载顺序隐患）。
+if (window.PdevSkuIndex && typeof window.PdevSkuIndex.onReady === "function") {
+  window.PdevSkuIndex.onReady(fillPdevEstimates);
+}
 function extractShopSku(raw) {
   if (raw.shopSku) return String(raw.shopSku);
   if (Array.isArray(raw.items) && raw.items.length > 0) {
@@ -373,6 +450,7 @@ function renderOrdersTable() {
       const productLinesHtml = orderItems.map((item, itemIndex) => {
         const itemTitle = escapeHtml(item?.name || item?.title || order.productName || order.title || "");
         const itemSku = escapeHtml(item?.shopSku || item?.offerId || item?.sku || order.shopSku || "");
+            const itemShopSkuRaw = String(item?.shopSku || item?.offerId || item?.sku || order.shopSku || "").trim();
         const itemQuantityValue = Number(item?.count ?? item?.quantity ?? item?.itemCount ?? 1);
         const itemQuantity = Number.isFinite(itemQuantityValue) && itemQuantityValue > 0 ? itemQuantityValue : 1;
         const itemPriceValue = Number(item?.unitPrice ?? item?.price ?? null);
@@ -394,6 +472,7 @@ function renderOrdersTable() {
               <span class="order-title-text">${itemTitle}</span>
             </div>
             <div class="order-product-item"><span>店铺SKU:</span><span class="value">${itemSku}</span></div>
+            <div class="order-product-item"><span>商品SKU:</span><span class="value" data-pdev-sku-cell data-shop-sku="${escapeHtml(itemShopSkuRaw)}">${escapeHtml(pdevSkuFor(itemShopSkuRaw) || "-")}</span></div>
             <div class="order-product-item"><span>数量:</span><span class="value">${itemQuantity}</span></div>
             <div class="order-product-item"><span>单价:</span><span class="value">${formatCurrency(itemPrice, currency)}</span></div>
           </div>
@@ -438,7 +517,11 @@ function renderOrdersTable() {
               <span>利润(卢布): <button type="button" class="link-btn profit-detail-trigger" data-action="profit-detail" data-profit-currency="rub">${escapeHtml(formatNullableFinanceMoney(order.profitRub))}</button></span>
             </div>
             <div class="order-customer-status">
-              <span>订单状态:</span>
+              <div class="order-profit-estimate" data-pdev-est data-pdev-est-order="${escapeHtml(order.id || order.shopOrderNo || "")}" data-amount="${escapeHtml(String(order.amount ?? ""))}" data-shop-sku="${escapeHtml(String(order.shopSku || ""))}" data-profit-rmb="${escapeHtml(String(order.profitRmb ?? ""))}" data-profit-rub="${escapeHtml(String(order.profitRub ?? ""))}" style="flex:0 0 100%;width:100%;margin:4px 0 6px;display:block;">
+              <span title="预估口径：订单金额 − 采购价（按商品SKU匹配商品管理）。尚未扣佣金与物流，等绑定与物流规则完成后补齐。">预估利润(RMB): <span class="value" data-pdev-est-rmb>-</span></span>
+              <span style="margin-left:12px;" title="同上">预估利润(卢布): <span class="value" data-pdev-est-rub>-</span></span>
+            </div>
+            <span>订单状态:</span>
               <span class="status ${receiptClass}">${receiptText}${customerOrderStatus?.positive && receivedAt ? ` · ${receivedAt}` : ""}</span>
             </div>
           </div>
@@ -479,6 +562,8 @@ function renderOrdersTable() {
     .join("");
   syncOrderSelectionUi();
   updateRemainingTimes();
+  // 【task-15】表格重渲染后立刻补一次预估利润（原来只靠 1.5s 定时兜底，重渲染后最多要等 1.5s 才显示数值）
+  if (typeof fillPdevEstimates === "function") fillPdevEstimates();
 }
 
 function renderPagination() {
@@ -669,7 +754,15 @@ async function onOrdersPurchaseImportSubmit(event) {
       body: file
     });
     const data = await response.json().catch(() => ({}));
-    result = { ok: response.ok, status: response.status, data, error: data.message || `HTTP ${response.status}` };
+    if (response.status === 401) {
+      // 与 shared/core/api.js 的 apiRequest 保持一致：会话过期要清理并回到登录页。
+      // 否则运营会停留在"看起来还在"的管理界面上，之后每个面板都静默 401。
+      clearAuth();
+      showAuth();
+      result = { ok: false, status: 401, data, error: data.message || "登录已过期，请重新登录" };
+    } else {
+      result = { ok: response.ok, status: response.status, data, error: data.message || `HTTP ${response.status}` };
+    }
   } catch (error) {
     result = { ok: false, error: String(error?.message || error) };
   }
@@ -708,25 +801,45 @@ function onBatchPurchaseClick() {
   openBatchPurchaseModal(orders);
 }
 
+// 作废在途守卫：不可逆操作，双击不应发出第二个请求。
+let isVoidingOrder = false;
+
 async function voidOrder(order) {
   if (!order) return;
-  if (orderMessage) {
-    orderMessage.style.color = "#1f2b3b";
-    orderMessage.textContent = "正在作废订单...";
-  }
-  const result = await apiRequest(`/api/orders/${encodeURIComponent(getOrderRequestRef(order))}/void`, { method: "POST" });
-  if (!result.ok) {
+  if (isVoidingOrder) {
     if (orderMessage) {
       orderMessage.style.color = "#c02030";
-      orderMessage.textContent = result.error || "订单作废失败";
+      orderMessage.textContent = "正在作废订单，请勿重复提交";
     }
     return;
   }
-  if (orderMessage) {
-    orderMessage.style.color = "#1d6f3a";
-    orderMessage.textContent = "订单已作废";
+  // 作废不可撤销，而这里此前一次点击就直接发请求。补二次确认——同类破坏性操作
+  // （shops / users / ai / product-dev / 在线产品删除）都有确认。
+  const orderRef = String(getOrderRequestRef(order) || order.shopOrderNo || order.id || "").trim();
+  if (!window.confirm(`确定作废订单 ${orderRef} 吗？此操作不可撤销。`)) return;
+
+  isVoidingOrder = true;
+  try {
+    if (orderMessage) {
+      orderMessage.style.color = "#1f2b3b";
+      orderMessage.textContent = "正在作废订单...";
+    }
+    const result = await apiRequest(`/api/orders/${encodeURIComponent(getOrderRequestRef(order))}/void`, { method: "POST" });
+    if (!result.ok) {
+      if (orderMessage) {
+        orderMessage.style.color = "#c02030";
+        orderMessage.textContent = result.error || "订单作废失败";
+      }
+      return;
+    }
+    if (orderMessage) {
+      orderMessage.style.color = "#1d6f3a";
+      orderMessage.textContent = "订单已作废";
+    }
+    await loadOrders();
+  } finally {
+    isVoidingOrder = false;
   }
-  await loadOrders();
 }
 
 function onSyncLabels() {
@@ -986,7 +1099,7 @@ function openPurchaseModal(order) {
     purchaseInfoPreview.innerHTML = `
       ${image ? `<img src="${escapeHtml(safeImageUrl(image))}" alt="product" referrerpolicy="no-referrer" />` : ""}
       <div>标题: <span class="value">${title}</span></div>
-      <div>SKU: <span class="value">${escapeHtml(order.shopSku || "-")}</span></div>
+      <div>店铺SKU: <span class="value">${escapeHtml(order.shopSku || "-")}</span></div>
       <div>数量: <span class="value">${escapeHtml(String(order.itemCount || 1))}</span></div>
     `;
   }
@@ -1971,3 +2084,10 @@ function bindOrdersEvents() {
   if (clearOrderMatchBtn) clearOrderMatchBtn.addEventListener("click", onOrderMatchClear);
   document.addEventListener("keydown", onTrackingModalEscClose);
 }
+
+// 预估利润：详情展开后填充（定时兜底，成本极低）
+setInterval(function () {
+  try {
+    if (typeof fillPdevEstimates === 'function' && document.querySelector('[data-pdev-est]')) fillPdevEstimates();
+  } catch (e) { /* 忽略 */ }
+}, 1500);

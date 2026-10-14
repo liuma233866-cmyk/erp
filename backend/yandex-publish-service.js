@@ -1,3 +1,5 @@
+const { isRetryableYandexStatus } = require("./yandex-http");
+
 const DEFAULT_YANDEX_API_BASE = "https://api.partner.market.yandex.ru";
 const DEFAULT_BATCH_SIZE = 100;
 
@@ -134,7 +136,6 @@ function mapOnlineProductToYandexPayload(product) {
 
 async function requestYandex(endpoint, apiKey, method, body, fetchImpl) {
   const timeoutMs = Math.max(1000, Number(process.env.YANDEX_REQUEST_TIMEOUT_MS || 30000));
-  const retryable = new Set([408, 425, 429, 500, 502, 503, 504]);
   let lastFailure;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const controller = new AbortController();
@@ -146,7 +147,7 @@ async function requestYandex(endpoint, apiKey, method, body, fetchImpl) {
       const data = await response.json().catch(() => ({}));
       if (response.ok) return { ok: true, status: response.status, data };
       lastFailure = { ok: false, status: response.status, data, message: formatYandexError(response.status, data) };
-      if (!retryable.has(response.status) || attempt === 2) return lastFailure;
+      if (!isRetryableYandexStatus(response.status) || attempt === 2) return lastFailure;
     } catch (error) {
       lastFailure = { ok: false, status: 502, message: `Yandex request failed: ${String(error?.message || error)}` };
       if (attempt === 2) return lastFailure;

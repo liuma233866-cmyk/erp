@@ -2,6 +2,19 @@ const { buildStableOrderId, getOrderUniqueKey } = require("./identity");
 
 // 从 server.js 拆出的订单采购回填与订单查找（纯函数，无共享状态）。
 
+// 采购字段清单：与 order_purchases 的列、以及 sql-persistence.js 的 ORDER_PURCHASE_FIELDS
+// 三者保持一致。内联在此是为了避免 order-backfill 与 sql-persistence 互相 require。
+const ORDER_PURCHASE_OVERRIDE_FIELDS = [
+  "purchasePlatform",
+  "purchaseLink",
+  "purchaseOrderNo",
+  "purchaseExpressNo",
+  "purchaseIntlNo",
+  "purchasePriceRmb",
+  "purchasePriceRub",
+  "purchaseUpdatedAt"
+];
+
 function extractOrderIdFromPurchasePath(pathValue) {
   const text = String(pathValue || "");
   const match = text.match(/\/api\/orders\/([^/]+)\/purchase/i);
@@ -84,17 +97,7 @@ function applyOrderPurchaseOverrides(orders, overrides) {
     if (!orderRef) continue;
     const order = findOrderByRef(orders, orderRef);
     if (!order) continue;
-    const fields = [
-      "purchasePlatform",
-      "purchaseLink",
-      "purchaseOrderNo",
-      "purchaseExpressNo",
-      "purchaseIntlNo",
-      "purchasePriceRmb",
-      "purchasePriceRub",
-      "purchaseUpdatedAt"
-    ];
-    for (const field of fields) {
+    for (const field of ORDER_PURCHASE_OVERRIDE_FIELDS) {
       const value = item[field];
       if (value !== undefined && value !== null && String(value).trim() !== "") {
         order[field] = value;
@@ -105,6 +108,28 @@ function applyOrderPurchaseOverrides(orders, overrides) {
     // "rolled back" updatedAt corrupts latest-record detection in dedupe and
     // amount backfill after every restart.
   }
+}
+
+// order_purchases 表行 → db.orderPurchaseOverrides 的标准形状。
+//
+// orderPurchaseOverrides 是「表属主」实体（见 persistence/store-manifest.js），AppState
+// 快照里按归属清单剔除了这个键，所以它**只能**由这张表回填。过去启动时只把表行按 orderRef
+// 贴到「已存在」的订单对象上、却没有重建这个数组，导致每次重启数组恒为空，
+// order-sync 里的 applyOrderPurchaseOverrides 成了空操作：为「尚未同步到的订单」预先登记的
+// 延迟采购单（routes/orders.js 的 deferred 分支）在订单后来出现时贴不回去。
+function buildOrderPurchaseOverridesFromRows(rows) {
+  const overrides = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const orderRef = String(row?.orderRef || row?.orderId || row?.shopOrderNo || "").trim();
+    if (!orderRef) continue;
+    const override = { orderRef };
+    for (const field of ORDER_PURCHASE_OVERRIDE_FIELDS) {
+      override[field] = String(row?.[field] ?? "").trim();
+    }
+    override.updatedAt = String(row?.updatedAt || override.purchaseUpdatedAt || "").trim();
+    overrides.push(override);
+  }
+  return overrides;
 }
 
 function hasTextValue(value) {
@@ -320,6 +345,7 @@ module.exports = {
   applyOrderPurchaseOverrides,
   backfillOrderAmounts,
   backfillOrderPurchaseFields,
+  buildOrderPurchaseOverridesFromRows,
   buildOrderPurchasePayload,
   dedupeOrders,
   extractOrderIdFromPurchasePath,

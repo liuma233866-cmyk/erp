@@ -3,6 +3,7 @@ const { normalizeOnlineProductRecord } = require("./publish-normalize");
 const { normalizeReviewRule } = require("./settings-normalize");
 const { sessionSqlValues, userSqlValues } = require("./sql-identity-store");
 const { normalizeCollectionBoxEntry, normalizePublishRecordEntry } = require("./page-stores");
+const { tableOwnedKeys } = require("./persistence/store-manifest");
 
 const ONLINE_PRODUCT_SQL_COLUMNS = [
   "id", "shopId", "companyId", "provider", "shopName", "campaignId", "offerId", "shopSku", "name", "vendor", "vendorCode", "marketSku",
@@ -58,6 +59,29 @@ const REVIEW_RULE_SQL_COLUMNS = [
   "applyToOnlineProducts"
 ];
 
+/**
+ * 构造 AppState 快照：序列化内存 db，并剔除所有「有专用表」的实体。
+ *
+ * 归属必须唯一：专用表实体若同时留在快照里，就会出现两份独立演进的副本
+ * （历史上正是它造成「页面 91 条草稿 / 查表 64 条」这类分歧）。
+ * 归属清单见 backend/persistence/store-manifest.js（每个实体只能有一个存储归属）。
+ * 排查方式：node scripts/persistence-divergence.cjs
+ */
+function buildAppStateSnapshot(source, serializeDatabase) {
+  const snapshot = serializeDatabase(source);
+  for (const key of tableOwnedKeys()) delete snapshot[key];
+  return snapshot;
+}
+
+// Yandex 合法费率目录单行表（模块作用域，供启动期直接建表使用）。
+const YANDEX_COMMISSION_CATALOG_DDL = `
+  CREATE TABLE IF NOT EXISTS yandex_commission_catalog (
+    id VARCHAR(32) NOT NULL PRIMARY KEY,
+    payloadJson LONGTEXT NOT NULL,
+    updatedAt TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+`;
+
 function createSqlWriters(deps) {
   const { getSqlPool, isSqlReady, getDb, serializeDatabase, stateKey, encryptSecret } = deps;
   let sessionSqlWriteQueue = Promise.resolve();
@@ -99,13 +123,7 @@ async function deleteShopFromSql(shopId) {
 
 async function saveDatabaseToSql() {
   if (!isSqlReady() || !getSqlPool()) return;
-  const snapshot = serializeDatabase(getDb());
-  delete snapshot.orders;
-  delete snapshot.orderPurchaseOverrides;
-  // 采集箱 / 上架记录 有自己的表（collection_box / publish_records），
-  // 不再进 AppState 快照。
-  delete snapshot.collectionBox;
-  delete snapshot.publishRecords;
+  const snapshot = buildAppStateSnapshot(getDb(), serializeDatabase);
   const serialized = JSON.stringify(snapshot);
   await Promise.resolve(
     getSqlPool().execute(
@@ -125,6 +143,44 @@ async function saveDatabaseToSql() {
   await saveReviewRulesToSql(getDb().reviewRules || []);
   await saveOnlineProductsToSql(getDb().onlineProducts || []);
   await saveOrdersToSql(getDb().orders || []);
+  await saveYandexCommissionCatalogToSql(getDb().yandexCommissionCatalog || {});
+}
+
+// Yandex 合法费率目录是单文档（实测 6MB），整体 upsert 到单行表，避免每次 saveDatabase()
+// 都要把它整块写进 AppState 快照。
+const YANDEX_COMMISSION_CATALOG_ID = "default";
+
+async function ensureYandexCommissionCatalogTable() {
+  if (!isSqlReady() || !getSqlPool()) return false;
+  await getSqlPool().query(YANDEX_COMMISSION_CATALOG_DDL);
+  return true;
+}
+
+async function saveYandexCommissionCatalogToSql(document) {
+  if (!isSqlReady() || !getSqlPool()) return;
+  const payload = JSON.stringify(document && typeof document === "object" ? document : {});
+  await getSqlPool().execute(
+    `INSERT INTO yandex_commission_catalog (id, payloadJson, updatedAt)
+     VALUES (?, ?, CURRENT_TIMESTAMP(6))
+     ON DUPLICATE KEY UPDATE payloadJson = VALUES(payloadJson), updatedAt = VALUES(updatedAt)`,
+    [YANDEX_COMMISSION_CATALOG_ID, payload]
+  );
+}
+
+async function loadYandexCommissionCatalogFromSql() {
+  if (!isSqlReady() || !getSqlPool()) return null;
+  const [rows] = await getSqlPool().query(
+    "SELECT payloadJson FROM yandex_commission_catalog WHERE id = ? LIMIT 1",
+    [YANDEX_COMMISSION_CATALOG_ID]
+  );
+  const raw = rows?.[0]?.payloadJson;
+  if (raw === undefined || raw === null || raw === "") return null;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 async function saveShopsToSql(shops) {
@@ -495,11 +551,14 @@ async function loadPageStoreRowsFromSql() {
     collectionBoxSqlValues, saveCollectionBoxToSql, deleteCollectionBoxFromSql,
     hydrateCollectionBoxFromSqlRow,
     publishRecordSqlValues, savePublishRecordsToSql, hydratePublishRecordFromSqlRow,
+    ensureYandexCommissionCatalogTable, saveYandexCommissionCatalogToSql, loadYandexCommissionCatalogFromSql,
     loadPageStoreRowsFromSql
   };
 }
 
 module.exports = {
   createSqlWriters,
+  buildAppStateSnapshot,
+  YANDEX_COMMISSION_CATALOG_DDL,
   ORDER_PURCHASE_FIELDS
 };

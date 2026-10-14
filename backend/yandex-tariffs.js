@@ -1,5 +1,6 @@
 const { buildYandexAuthProfiles } = require("./yandex-fetch");
 const { formatYandexApiError, shouldRetryWithNextAuth } = require("./yandex-http");
+const { withFetchTimeout } = require("./http-timeout");
 
 const YANDEX_MARKET_BASE_URL = process.env.YANDEX_MARKET_BASE_URL || "https://api.partner.market.yandex.ru";
 
@@ -127,11 +128,11 @@ async function calculateYandexFbsCommission(shop, items) {
   for (const profile of authProfiles) {
     let moveToNextAuth = false;
     for (const payload of payloadVariants) {
-      const response = await fetch(endpoint, {
+      const response = await fetch(endpoint, withFetchTimeout({
         method: "POST",
         headers: { ...profile.headers, "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-      });
+      }));
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         lastErrorMessage = formatYandexApiError(response.status, data);
@@ -223,11 +224,11 @@ async function calculateYandexOnlineProductFees(shop, products) {
     let message = "";
     for (const profile of authProfiles) {
       try {
-        const response = await fetch(endpoint, {
+        const response = await fetch(endpoint, withFetchTimeout({
           method: "POST",
           headers: { ...profile.headers, "Content-Type": "application/json" },
           body: JSON.stringify(payload)
-        });
+        }));
         const data = await response.json().catch(() => ({}));
         if (response.ok && String(data?.status || "OK").toUpperCase() !== "ERROR") {
           responseData = data;

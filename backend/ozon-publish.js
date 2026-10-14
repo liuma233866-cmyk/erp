@@ -1,4 +1,5 @@
 const OZON_API_BASE = "https://api-seller.ozon.ru";
+const { withFetchTimeout } = require("./http-timeout");
 
 function numberValue(value, fallback = 0) {
   const num = Number(value);
@@ -69,11 +70,11 @@ function validateOzonProduct(item) {
 async function ozonRequest(pathname, clientId, apiKey, body) {
   let response;
   try {
-    response = await fetch(`${OZON_API_BASE}${pathname}`, {
+    response = await fetch(`${OZON_API_BASE}${pathname}`, withFetchTimeout({
       method: "POST",
       headers: { "Client-Id": String(clientId), "Api-Key": String(apiKey), "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body)
-    });
+    }));
   } catch (error) {
     return { ok: false, status: 502, message: `Ozon request failed: ${String(error?.message || error)}` };
   }

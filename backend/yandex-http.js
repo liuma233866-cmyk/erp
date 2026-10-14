@@ -1,3 +1,5 @@
+const { withFetchTimeout } = require("./http-timeout");
+
 function extractYandexCampaigns(payload) {
   if (!payload || typeof payload !== "object") return [];
   if (Array.isArray(payload.campaigns)) return payload.campaigns;
@@ -23,9 +25,18 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// 可重试的 Yandex 状态码：全项目**唯一**定义，由 yandex-http / yandex-publish-service /
+// orders/order-sync 三处共用。历史上三处各写一份且互相矛盾（yandex-http 有 409 无 420、
+// yandex-publish-service 两者皆无、order-sync 有 420），结果是列表分页与刊登批次一遇限流
+// 就当成永久失败秒退。
+//   - 420 = METHOD_FAILURE「Hit rate limit of 6 parallel requests」，是 Yandex 实际的限流码
+//     （order-sync 当初正因此单独加过它），必须重试；
+//   - 409 = 冲突，不是瞬时故障：重试不会成功，对刊登这类非幂等写还可能重复提交。
+//     此前只有 yandex-http 一份把它当可重试，现统一为不重试。
+const RETRYABLE_YANDEX_STATUS = new Set([408, 420, 425, 429, 500, 502, 503, 504]);
+
 function isRetryableYandexStatus(status) {
-  const code = Number(status || 0);
-  return code === 408 || code === 409 || code === 425 || code === 429 || code === 500 || code === 502 || code === 503 || code === 504;
+  return RETRYABLE_YANDEX_STATUS.has(Number(status || 0));
 }
 
 function formatYandexFetchError(error) {
@@ -60,7 +71,8 @@ async function fetchYandexJson(endpoint, options = {}, retryCount = 2) {
   let lastError = null;
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     try {
-      const response = await fetch(endpoint, options);
+      // 每次尝试都新建超时 signal：重试时若复用已 abort 的 signal，第二次会立刻失败。
+      const response = await fetch(endpoint, withFetchTimeout(options));
       const data = await response.json().catch(() => ({}));
       const responseSummary = summarizeYandexResponse(data);
       if (!response.ok && isRetryableYandexStatus(response.status) && attempt < retryCount) {
@@ -116,6 +128,7 @@ function normalizePartnerTokenInput(value) {
 }
 
 module.exports = {
+  RETRYABLE_YANDEX_STATUS,
   extractYandexCampaigns,
   fetchYandexJson,
   formatYandexApiError,

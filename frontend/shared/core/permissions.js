@@ -80,6 +80,7 @@ const PERMISSIONS = {
     productSync: false
   },
   supervisor: {
+  product_dev: "产品开发",
     orderRead: true,
     orderCreate: true,
     orderUpdate: true,
@@ -197,6 +198,7 @@ function applyRoleVisibility() {
       const options = isAdmin
         ? [
             ["supervisor", getRoleLabel("supervisor")],
+              ["product_dev", "产品开发"],
             ["operations", "运营"],
             ["finance", "财务"]
           ]

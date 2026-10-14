@@ -10,6 +10,13 @@ const { MySqlAuditSink } = require("../audit/mysqlAuditSink");
 const { MysqlCentralCatalogRepository } = require("../central/mysqlCatalogRepository");
 const { CentralCatalogService } = require("../central/catalogService");
 const { createCentralController } = require("../central/centralController");
+const { MysqlCollectionRepository } = require("../collection/mysqlCollectionRepository");
+const { CollectionBatchService } = require("../collection/collectionBatchService");
+const { createCollectionController } = require("../collection/collectionController");
+const { MysqlPublishRepository } = require("../publish/mysqlPublishRepository");
+const { PublishBatchService } = require("../publish/publishBatchService");
+const { PublishClaimService } = require("../publish/publishClaimService");
+const { createPublishController } = require("../publish/publishController");
 
 function readJsonBody(request, maxBytes = 1024 * 1024) {
   return new Promise((resolve, reject) => {
@@ -42,18 +49,36 @@ function sendJson(response, result, requestId) {
   response.end(body);
 }
 
-function createV2Handler({ auth, controller, maxBodyBytes } = {}) {
-  if (!auth || !controller) throw new TypeError("auth and controller are required");
+// 按最长前缀匹配挂载点，未命中返回 null。prefix 末尾斜杠会被归一化。
+function pickMount(mounts, pathname) {
+  let best = null;
+  for (const mount of mounts) {
+    const prefix = String(mount?.prefix || "").replace(/\/+$/, "");
+    if (!prefix) continue;
+    if (pathname !== prefix && !pathname.startsWith(`${prefix}/`)) continue;
+    if (!best || prefix.length > best.prefix.length) best = { prefix, controller: mount.controller };
+  }
+  return best;
+}
+
+function createV2Handler({ auth, controller, routes, maxBodyBytes } = {}) {
+  const mounts = Array.isArray(routes) && routes.length
+    ? routes.map((route) => ({ prefix: route.prefix, controller: route.controller }))
+    : (controller ? [{ prefix: "/api/v2/central", controller }] : []);
+  if (!auth || !mounts.length) throw new TypeError("auth and at least one route mount are required");
+  for (const mount of mounts) {
+    if (!mount.controller) throw new TypeError(`Route mount ${mount.prefix} has no controller`);
+  }
   return async function v2Handler(request, response) {
     const requestId = getOrCreateRequestId(request);
     attachRequestId(response, requestId);
     try {
       const user = await auth.authenticate(request);
       const url = new URL(request.url || "/", "http://v2.local");
-      const prefix = "/api/v2/central";
-      if (!url.pathname.startsWith(prefix)) throw new V2Error(ERROR_CODES.VALIDATION_FAILED, "Unknown V2 route");
-      const pathname = url.pathname.slice(prefix.length) || "/";
-      const result = await controller.handle({
+      const mount = pickMount(mounts, url.pathname);
+      if (!mount) throw new V2Error(ERROR_CODES.VALIDATION_FAILED, "Unknown V2 route");
+      const pathname = url.pathname.slice(mount.prefix.length) || "/";
+      const result = await mount.controller.handle({
         method: request.method,
         pathname,
         query: Object.fromEntries(url.searchParams.entries()),
@@ -75,9 +100,33 @@ function createV2Application({ pool, verifyToken, resolveCompanyId, resolvePermi
   const service = new CentralCatalogService({ repository, clock });
   const audit = new AuditLogger({ sink: new MySqlAuditSink({ pool }), clock });
   const controller = createCentralController({ service, tenant: security.tenant, permission: security.permission, audit });
-  const handler = createV2Handler({ auth: security.auth, controller });
-  return { security, repository, service, controller, handler, server: http.createServer(handler) };
+
+  const collectionService = new CollectionBatchService({ repository: new MysqlCollectionRepository({ pool }), clock });
+  const collectionController = createCollectionController({
+    service: collectionService, tenant: security.tenant, permission: security.permission, audit
+  });
+
+  const publishRepository = new MysqlPublishRepository({ pool });
+  const publishBatchService = new PublishBatchService({ repository: publishRepository, clock });
+  const publishClaimService = new PublishClaimService({ repository: publishRepository, clock });
+  const publishController = createPublishController({
+    batchService: publishBatchService, claimService: publishClaimService,
+    tenant: security.tenant, permission: security.permission, audit
+  });
+
+  const routes = [
+    { prefix: "/api/v2/central", controller },
+    { prefix: "/api/v2/collection", controller: collectionController },
+    { prefix: "/api/v2/publish", controller: publishController }
+  ];
+  const handler = createV2Handler({ auth: security.auth, routes });
+  return {
+    security, repository, service, controller, routes, handler,
+    collectionService, collectionController,
+    publishBatchService, publishClaimService, publishController,
+    server: http.createServer(handler)
+  };
 }
 
-module.exports = { createV2Handler, createV2Application, readJsonBody, sendJson };
+module.exports = { createV2Handler, createV2Application, pickMount, readJsonBody, sendJson };
 

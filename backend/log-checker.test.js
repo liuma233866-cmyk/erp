@@ -32,7 +32,7 @@ test("quality gate blocks are classified as low informational issues", () => {
     path: "/api/yandex/publish",
     statusCode: 200,
     errorMessage: "",
-    warningMessage: "店铺SHP-MN0L3MMG-CF39: 卡片质量分低于 80，已拦截刊登"
+    warningMessage: "店铺SHP-TEST-1: 卡片质量分低于 80，已拦截刊登"
   });
   assert.equal(result.key, "quality_gate_block");
   assert.equal(result.config.severity, "low");

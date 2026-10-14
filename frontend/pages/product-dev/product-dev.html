@@ -1,0 +1,189 @@
+          <!-- 商品管理面板片段（目录名仍是 product-dev，面板 id 仍是 productDevPanel）：由 index.html 的 SSI include 内联到 <main class="content"> 内。 -->
+          <section id="productDevPanel" class="panel hidden">
+            <!-- 仅当 ?pdevMock=1 / localStorage pdev_mock=1 时由 JS 显示，防止把 mock 数据当成真实库 -->
+            <div id="pdevMockBadge" class="pdev-mock-badge hidden" role="status"></div>
+            <div class="panel-head pdev-head">
+              <div class="pdev-head-copy">
+                <h3>商品管理</h3>
+              </div>
+              <div class="head-actions pdev-head-actions">
+                <button id="pdevRefreshBtn" type="button" class="secondary-btn">刷新</button>
+                <button id="pdevToggleCreateBtn" type="button">新建商品</button>
+              </div>
+            </div>
+
+            <div id="pdevBackendNotice" class="pdev-notice hidden"></div>
+
+            <!-- 搜索：商品SKU / 商品名称。
+                 列表接口只有 q（服务端只拿它 LIKE 标题），没有 SKU 筛选，产品表也没有 SKU 字段。
+                 所以：商品名称「模糊」=真筛选（服务端 LIKE）；商品SKU「精准」=用详情接口直接点名取（现有接口即可，真能用）；
+                 商品SKU「模糊」与商品名称「精准」=服务端不支持，提交时会明确说明未生效，绝不静默忽略。
+                 「价格」筛选已按需求移除，后续再加（加回时：这里补一个 .pdev-field，JS 里补 pdevSearchPrice 常量、
+                 pdevOnSearch 里读取并 push 到 searchPending、pdevResetSearch 里清空；CSS 栅格列数也要加回一列）。 -->
+            <form id="pdevSearchForm" class="pdev-search-bar">
+              <label class="pdev-field">
+                <!-- 匹配方式嵌在输入框内部左侧（与参考系统一致：SKU(精准) ▾ + 输入区）。
+                     上方用一个等高的空白标签占位，好与同排其它格的标签对齐（避免用 margin 魔法数字）。 -->
+                <span aria-hidden="true">&nbsp;</span>
+                <div class="pdev-prefix-search">
+                  <select id="pdevSearchSkuMode" class="pdev-prefix-mode" title="匹配方式">
+                    <option value="exact" selected>商品SKU(精准)</option>
+                    <option value="fuzzy">商品SKU(模糊)</option>
+                  </select>
+                  <input id="pdevSearchSku" type="text" maxlength="512" placeholder="双击批量查询，模糊搜索" />
+                </div>
+              </label>
+              <label class="pdev-field">
+                <span aria-hidden="true">&nbsp;</span>
+                <div class="pdev-prefix-search">
+                  <select id="pdevSearchTitleMode" class="pdev-prefix-mode" title="匹配方式">
+                    <option value="fuzzy" selected>商品名称(模糊)</option>
+                    <option value="exact">商品名称(精准)</option>
+                  </select>
+                  <input id="pdevSearchTitle" type="text" maxlength="500" placeholder="请输入商品名称" />
+                </div>
+              </label>
+              <div class="pdev-search-actions">
+                <button type="submit" id="pdevSearchSubmitBtn">查询</button>
+                <button type="button" class="secondary-btn" id="pdevSearchResetBtn">重置</button>
+              </div>
+            </form>
+            <div class="table-wrap online-products-table catalog-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="pdev-cell-check"><input type="checkbox" id="pdevSelectAll" aria-label="全选" /></th>
+                    <th>商品SKU</th>
+                    <th>商品名称</th>
+                    <th>商品图片</th>
+                    <th>状态标签</th>
+                    <th>销售状态</th>
+                    <th>近期销量</th>
+                    <th>是否组合商品</th>
+                    <th>商品资料</th>
+                    <th>刊登</th>
+                    <th>负责人</th>
+                    <th>时间</th>
+                    <th>操作人</th>
+                    <th>业务类型</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="pdevSearchResults"></tbody>
+              </table>
+            </div>
+            <div id="pdevSearchPager" class="pdev-pager"></div>
+
+              
+
+            <!-- 编辑日志弹窗：查看某件商品的操作历史（所有人可看，不限制角色） -->
+            <div id="pdevLogModalMask" class="modal-mask hidden">
+              <div class="modal-card pdev-log-card" role="dialog" aria-modal="true" aria-labelledby="pdevLogModalTitle">
+                <div class="modal-head">
+                  <div class="modal-title">
+                    <h3 id="pdevLogModalTitle">编辑日志</h3>
+                  </div>
+                  <button id="pdevCloseLogBtn" type="button" class="secondary-btn">关闭</button>
+                </div>
+                <div class="pdev-log-body">
+                  <p id="pdevLogHint" class="pdev-log-hint"></p>
+                  <div class="table-wrap online-products-table catalog-table-shell pdev-log-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>时间</th>
+                          <th>操作人</th>
+                          <th>角色</th>
+                          <th>动作</th>
+                          <th>修改内容</th>
+                          <th>结果</th>
+                          <th>说明</th>
+                        </tr>
+                      </thead>
+                      <tbody id="pdevLogRows"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 新建商品弹窗（沿用项目既有的 modal-mask / modal-card 约定） -->
+            <div id="pdevCreateModalMask" class="modal-mask hidden">
+              <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pdevCreateModalTitle">
+                <div class="modal-head">
+                  <div class="modal-title">
+                    <h3 id="pdevCreateModalTitle">新建商品</h3>
+                  </div>
+                  <button id="pdevCloseCreateBtn" type="button" class="secondary-btn">取消</button>
+                </div>
+                <form id="pdevCreateForm" class="modal-form">
+                  <label for="pdevCreateTitle">商品名称 *</label>
+                  <input id="pdevCreateTitle" name="title" type="text" maxlength="500" placeholder="例如：加热宠物窝（冬季爆款）" required />
+            <label for="pdevCreateSku">商品SKU</label>
+            <div class="pdev-sku-row">
+              <input id="pdevCreateSku" name="sku" type="text" maxlength="64" placeholder="留空则系统自动生成；也可点右侧「生成」" />
+              <button type="button" id="pdevGenerateSkuBtn" class="secondary-btn">生成</button>
+            </div>
+            <label for="pdevCreateSystemCategory">系统类目</label>
+            <select id="pdevCreateSystemCategory" name="systemCategory"><option value="">不标记</option></select>
+                <label class="pdev-field">
+                  <span>商品状态</span>
+                  <select id="pdevCreateGoodsStatus" name="goodsStatus">
+                    <option value="">不标记</option>
+                    <option value="在售">在售</option>
+                    <option value="停售">停售</option>
+                    <option value="禁售">禁售</option>
+                  </select>
+                </label>
+                <label class="pdev-field">
+                  <span>销售状态</span>
+                  <select id="pdevCreateSalesStatus" name="salesStatus">
+                    <option value="">不标记</option>
+                    <option value="新品">新品</option>
+                    <option value="畅销">畅销</option>
+                    <option value="平销">平销</option>
+                    <option value="低销">低销</option>
+                    <option value="清仓">清仓</option>
+                    <option value="待下架">待下架</option>
+                    <option value="下架">下架</option>
+                  </select>
+                </label>
+                <label class="pdev-field">
+                  <span>货源状态</span>
+                  <select id="pdevCreateSourceStatus" name="sourceStatus">
+                    <option value="">不标记</option>
+                    <option value="正常货源">正常货源</option>
+                    <option value="货源受限">货源受限</option>
+                  </select>
+                </label>
+                <label class="pdev-field">
+                  <span>最新采购价（￥）</span>
+                  <input id="pdevCreatePurchasePrice" name="purchasePrice" type="number" step="0.01" min="0" placeholder="0.00" />
+                </label>
+                <label class="pdev-field">
+                  <span>采购链接</span>
+                  <input id="pdevCreatePurchaseUrl" name="purchaseUrl" type="text" maxlength="512" />
+                </label>
+                <label class="pdev-field">
+                  <span>参考链接</span>
+                  <input id="pdevCreateReferenceUrl" name="referenceUrl" type="text" maxlength="512" />
+                </label>
+                <label class="pdev-field">
+                  <span>是否组合商品</span>
+                  <select id="pdevCreateIsBundle" name="isBundle">
+                    <option value="">不标记</option>
+                    <option value="是">是</option>
+                    <option value="否">否</option>
+                  </select>
+                </label>
+                  <label for="pdevCreateRemark">备注</label>
+                  <input id="pdevCreateRemark" name="remark" type="text" placeholder="例如：Yandex 搜索量上升、1688 有稳定货源" />
+                  <span id="pdevCreateMsg" class="pdev-inline-msg"></span>
+                  <div class="modal-actions">
+                    <button type="button" class="secondary-btn" id="pdevCancelCreateBtn">取消</button>
+                    <button type="submit" id="pdevCreateSubmitBtn">创建</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </section>

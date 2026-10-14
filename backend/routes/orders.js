@@ -1,7 +1,7 @@
 // 从 server.js 拆出的路由注册表（orders 域）。
 
 function createOrdersRoutes(deps) {
-  const { authService, respondApi, getDb, parseJsonBody, parseRawBody, XLSX, maskSensitive, saveDatabase, writeAudit, getUserAssignedShopIds, filterOrdersByAssignments, orderBelongsToWorkspace, filterOrders, paginateItems, hasFilterQuery, normalizeOrderSyncOptions, buildRequestedOrderSyncPlan, syncOrdersForShops, orderSyncState, validateNonEmptyString, isValidOrderStatus, makeId, getShopOrderWorkspace, isOrderV2Eligible, normalizeOrderV2, buildOrderV2Summary, findOrderIndexByRef, findOrderByRef, canUserAccessShop, findShopForOrder, ROLE_ADMIN, ROLE_OPERATIONS, ROLE_SUPERVISOR, ROLE_FINANCE, ROLE_SUPPORT, buildOrderPurchasePayload, upsertOrderPurchaseOverride, sqlWriters, fetchYandexOrderLabels, fetchYandexOrderDetail, fetchYandexDeliveryServices, buildDeliveryServiceMap, extractYandexTracking, PDFLib, findMatchingReviewRule, normalizeNullableNumber, readPositiveIntParam } = deps;
+  const { authService, respondApi, getDb, parseJsonBody, parseRawBody, XLSX, maskSensitive, saveDatabase, writeAudit, getUserAssignedShopIds, filterOrdersByAssignments, orderBelongsToWorkspace, filterOrders, paginateItems, hasFilterQuery, normalizeOrderSyncOptions, buildRequestedOrderSyncPlan, syncOrdersForShops, orderSyncState, validateNonEmptyString, isValidOrderStatus, makeId, getShopOrderWorkspace, isOrderV2Eligible, normalizeOrderV2, buildOrderV2Summary, buildOrderSummary, findOrderIndexByRef, findOrderByRef, canUserAccessShop, findShopForOrder, ROLE_ADMIN, ROLE_OPERATIONS, ROLE_SUPERVISOR, ROLE_FINANCE, ROLE_SUPPORT, buildOrderPurchasePayload, upsertOrderPurchaseOverride, sqlWriters, fetchYandexOrderLabels, fetchYandexOrderDetail, fetchYandexDeliveryServices, buildDeliveryServiceMap, extractYandexTracking, PDFLib, findMatchingReviewRule, normalizeNullableNumber, readPositiveIntParam } = deps;
 
   // 采购导入/导出共用同一组列：模板、导出文件、导入解析都以此为准。
   const PURCHASE_IMPORT_COLUMNS = [
@@ -56,6 +56,26 @@ function createOrdersRoutes(deps) {
             const paged = paginateItems(filtered, query, 50);
             const actionType = hasFilterQuery(query) ? "filter_query" : "read";
             respondApi(req, res, auth.user, { ...auditBase, actionType, resourceType: "order" }, 200, { items: paged.items, pagination: paged.pagination });
+            return;
+      }
+    },
+    {
+      // 首页仪表盘的聚合结果：一次返回 KPI + 各平台（页签）的图表序列/状态计数/Top10 店铺。
+      // 目的是让前端不再下载整张 orders 表（此前每次进面板都会拉全量，见 order-summary.js 顶部说明）。
+      // 取数范围与上面的 /api/orders 完全一致（店铺授权 + 工作区），保证两处看到同一批订单。
+      matches: (pathname, method) => pathname === "/api/orders/summary" && method === "GET",
+      handler: async (req, res, query, auditBase, pathname, url) => {
+            const auth = authService.requireAuth(req, res, { ...auditBase, actionType: "read", resourceType: "order" });
+            if (!auth.ok) return;
+            if (!authService.checkPermission(auth.user, "order.read")) {
+              respondApi(req, res, auth.user, { ...auditBase, actionType: "read", resourceType: "order" }, 403, { message: "Forbidden" });
+              return;
+            }
+            const allOrders = getDb().orders || [];
+            const assignedShopIds = getUserAssignedShopIds(auth.user, getDb().shops || []);
+            const source = assignedShopIds === null ? allOrders : assignedShopIds.length ? filterOrdersByAssignments(allOrders, assignedShopIds, getDb().shops || []) : [];
+            const workspaceSource = source.filter((order) => orderBelongsToWorkspace(order, getDb().shops || [], getDb().shopOrderWorkspaceOverrides, "v1"));
+            respondApi(req, res, auth.user, { ...auditBase, actionType: "read", resourceType: "order" }, 200, buildOrderSummary(workspaceSource));
             return;
       }
     },
@@ -489,9 +509,12 @@ function createOrdersRoutes(deps) {
           return;
         }
         const assignedShopIds = getUserAssignedShopIds(auth.user, getDb().shops || []);
+        // 三态必须写全：null = 不受限制（仅 admin）；[] = 无可见店铺，而不是「全部店铺」。
         const scopedOrders = assignedShopIds === null
           ? (getDb().orders || [])
-          : filterOrdersByAssignments(getDb().orders || [], assignedShopIds, getDb().shops || []);
+          : assignedShopIds.length
+            ? filterOrdersByAssignments(getDb().orders || [], assignedShopIds, getDb().shops || [])
+            : [];
         const unpurchased = scopedOrders.filter((order) => !hasOrderPurchaseInfo(order));
         const rows = [[
           "订单号", "店铺", "SKU", "商品信息", "数量", "订单金额(RUB)",

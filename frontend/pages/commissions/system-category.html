@@ -1,0 +1,187 @@
+<style>
+  /* sc-freeze-action：冻结「操作」列（横向滚动时贴右边不动）*/
+  #systemCategoryPanel .table-wrap { overflow-x: auto; }
+  #systemCategoryPanel thead th:last-child,
+  #systemCategoryPanel tbody td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: -8px 0 10px -8px rgba(47, 70, 99, 0.22);
+  }
+  #systemCategoryPanel thead th:last-child {
+    z-index: 3;
+    background: linear-gradient(180deg, #eef4ff 0%, #e6eefb 100%);
+  }
+  /* sc-cols：类目列占满，操作列贴右 */
+  #systemCategoryTableBody td:first-child { width: 100%; }
+  #systemCategoryTableBody td:last-child { white-space: nowrap; }
+  /* sc-big-text：系统类目列表里类目文字放大 */
+  #systemCategoryTableBody td { font-size: 16px; color: #1f2b3b; }
+  #systemCategoryTableBody td button { font-size: 13px; }
+</style>
+<section id="systemCategoryPanel" class="panel hidden">
+  <div class="panel-head">
+    <div>
+      <h3>系统类目</h3>
+    </div>
+    <div class="head-actions">
+      <button id="refreshSystemCategoryBtn" type="button" class="secondary-btn">刷新</button>
+      <button id="openSystemCategoryModalBtn" type="button">新增系统类目</button>
+    </div>
+  </div>
+
+  <div class="tabs" style="display:flex;gap:8px;align-items:center;margin:0 0 12px;">
+  <button class="tab" type="button" data-view="yandexCommissionPanel">Yandex佣金</button>
+  <button class="tab" type="button" data-view="ozonCommissionPanel">Ozon佣金</button>
+  <button class="tab active" type="button" data-view="systemCategoryPanel">系统类目</button>
+  </div>
+
+
+  <div class="table-wrap online-products-table catalog-table-shell">
+    <table>
+      <thead>
+        <tr>
+          <th>类目</th>
+          <th style="text-align:right;white-space:nowrap;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="systemCategoryTableBody">
+        <tr><td colspan="2">暂无数据：点右上角「新增系统类目」添加。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  // 系统类目面板：自包含脚本（列表 / 新增 / 编辑 / 删除），接口为 /api/system-categories
+  (function () {
+    var panel = document.getElementById("systemCategoryPanel");
+    var tbody = document.getElementById("systemCategoryTableBody");
+    var msg = document.getElementById("systemCategoryMessage");
+    if (!panel || !tbody) return;
+
+    function setMsg(text, bad) {
+      if (!msg) return;
+      msg.textContent = text || "";
+      msg.style.color = bad ? "#a02020" : "";
+    }
+    function esc(value) {
+      return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function call(method, path, body) {
+      var options = { method: method, headers: { Accept: "application/json" }, credentials: "same-origin" };
+      if (body !== undefined) {
+        options.headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(body);
+      }
+      return fetch(path, options).then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
+      });
+    }
+
+    function render(items) {
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="2">暂无数据：点右上角「新增系统类目」添加。</td></tr>';
+        return;
+      }
+      var rows = items.map(function (item) {
+        return '<tr>'
+          + '<td>' + esc(item.name) + '</td>'
+          + '<td style="text-align:right;white-space:nowrap;"><button type="button" class="secondary-btn" data-sc-del="' + esc(item.id) + '">删除</button></td>'
+          + '</td>'
+          + '</tr>';
+      });
+      tbody.innerHTML = rows.join("");
+      Array.prototype.forEach.call(tbody.querySelectorAll("[data-sc-edit]"), function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-sc-edit");
+          var hit = items.filter(function (x) { return String(x.id) === String(id); })[0];
+          if (hit) openModal(hit);
+        });
+      });
+      Array.prototype.forEach.call(tbody.querySelectorAll("[data-sc-del]"), function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-sc-del");
+          if (!window.confirm("删除系统类目 " + id + "？")) return;
+          call("DELETE", "/api/system-categories/" + encodeURIComponent(id)).then(function (res) {
+            if (!res.ok) { setMsg("删除失败（HTTP " + res.status + "）", true); return; }
+            setMsg("已删除", false);
+            scLoadList();
+          });
+        });
+      });
+    }
+
+    function scLoadList() {
+      setMsg("加载中…");
+      call("GET", "/api/system-categories").then(function (res) {
+        if (!res.ok) { setMsg("加载失败（HTTP " + res.status + "）", true); return; }
+        var items = (res.data && Array.isArray(res.data.items)) ? res.data.items : [];
+        setMsg("共 " + items.length + " 条", false);
+        render(items);
+      }).catch(function (error) { setMsg("加载异常：" + error.message, true); });
+    }
+
+    function openModal(item) {
+      var editing = !!item;
+      var mask = document.createElement("div");
+      mask.className = "modal-mask";
+      mask.style.cssText = "position:fixed;inset:0;background:rgba(20,30,45,.35);display:flex;align-items:center;justify-content:center;z-index:9999;";
+      var card = document.createElement("div");
+      card.className = "modal-card";
+      card.style.cssText = "background:#fff;border-radius:16px;padding:20px;width:min(520px,92vw);box-shadow:0 18px 48px rgba(20,30,45,.22);";
+      card.innerHTML = '<h3 style="margin:0 0 14px;font-size:18px;">' + (editing ? "编辑类目" : "新增类目") + '</h3>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;">'
+        + '<label style="display:block;font-size:13px;">一级类目 *<input id="scL1" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '<label style="display:block;font-size:13px;">二级类目<input id="scL2" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '<label style="display:block;font-size:13px;">三级类目<input id="scL3" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '<label style="display:block;font-size:13px;">四级类目<input id="scL4" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '<label style="display:block;font-size:13px;">五级类目<input id="scL5" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '<label style="display:block;font-size:13px;">六级类目<input id="scL6" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '<label style="display:block;font-size:13px;">七级类目<input id="scL7" type="text" maxlength="128" style="width:100%;margin-top:6px;" /></label>'
+        + '</div>'
+        + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;"><button type="button" class="secondary-btn" id="scCancel">取消</button><button type="button" id="scSave">保存</button></div>';
+      mask.appendChild(card);
+      document.body.appendChild(mask);
+      function close() { if (mask.parentNode) mask.parentNode.removeChild(mask); }
+      document.getElementById("scCancel").addEventListener("click", close);
+      mask.addEventListener("click", function (e) { if (e.target === mask) close(); });
+            // 编辑时把已有名称（一级 > 二级 > …）拆回各级输入框
+      function scFillLevels(value) {
+        var parts = String(value || "").split(" > ");
+        for (var i = 1; i <= 7; i += 1) {
+          var el = document.getElementById("scL" + i);
+          if (el) el.value = parts[i - 1] ? parts[i - 1] : "";
+        }
+      }
+      scFillLevels(editing ? item.name : "");
+      document.getElementById("scSave").addEventListener("click", function () {
+        var levels = [];
+        for (var i = 1; i <= 7; i += 1) {
+          var el = document.getElementById("scL" + i);
+          var v = String((el && el.value) || "").trim();
+          if (v) levels.push(v);
+        }
+        var payload = { name: levels.join(" > ") };
+        if (!payload.name) { setMsg("名称必填", true); return; }
+        var req = editing
+          ? call("PUT", "/api/system-categories/" + encodeURIComponent(item.id), payload)
+          : call("POST", "/api/system-categories", payload);
+        req.then(function (res) {
+          if (!res.ok) { setMsg((editing ? "保存" : "新增") + "失败（HTTP " + res.status + "）" + ((res.data && res.data.message) ? "：" + res.data.message : ""), true); return; }
+          close();
+          setMsg(editing ? "已保存" : "已新增", false);
+          scLoadList();
+        }).catch(function (error) { setMsg("提交异常：" + error.message, true); });
+      });
+    }
+
+    var addBtn = document.getElementById("openSystemCategoryModalBtn");
+    if (addBtn) addBtn.addEventListener("click", function () { openModal(null); });
+    var refreshBtn = document.getElementById("refreshSystemCategoryBtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", scLoadList);
+    scLoadList();
+  })();
+</script>

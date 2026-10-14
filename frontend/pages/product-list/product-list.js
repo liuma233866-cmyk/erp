@@ -1,3 +1,15 @@
+// 商品管理（pdev）SKU 索引 + SKU关系管理 绑定关系索引：用于显示「商品SKU」
+// 【task-15】取数顺序 = **绑定关系优先、同码兜底**：
+//   ① GET /api/product-dev/products → publicId(lower) → { sku, purchasePrice }（同码兜底 + 采购价来源）
+//   ② GET /api/pdev-links          → offerId / marketSku / onlineProductId（lower + trim）
+//                                      → { sku: pdevSku, purchasePrice }，后写入 = 绑定优先（覆盖①同 key 项）
+//   ③ 两条都没有 → 返回 ""（页面显示 -）
+// 【task-26】索引已抽到 shared/core/pdev-sku-index.js（单一命名空间 window.PdevSkuIndex）：
+//   以前 orders.js / product-list.js / online-products.js 各自一份同名裸全局、互相覆盖；
+//   这里只留薄封装：索引变量与加载函数都收进共享命名空间，本文件不再有同名的裸全局。
+function pdevSkuFor(shopSku) {
+  return window.PdevSkuIndex ? window.PdevSkuIndex.skuFor(shopSku) : "";
+}
 function renderProductListSummary() {
   const items = Array.isArray(state.productListFilteredProducts) ? state.productListFilteredProducts : [];
   if (productListCount) productListCount.textContent = String(items.length);
@@ -65,7 +77,8 @@ function renderProductListTable() {
               <div class="product-info">
                 <div class="product-title clamp-2">${escapeHtml(name)}</div>
                 <div class="product-sub">
-                  <div>SKU：${escapeHtml(sku)}</div>
+                  <div>店铺SKU：${escapeHtml(sku)}</div>
+            <div>商品SKU: <span data-pdev-sku-cell data-shop-sku="${escapeHtml(sku)}">${escapeHtml(pdevSkuFor(sku) || "-")}</span></div>
                   <div>品牌：${escapeHtml(brand)}</div>
                 </div>
               </div>

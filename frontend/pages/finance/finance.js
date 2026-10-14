@@ -3,24 +3,34 @@ function formatFinanceMoney(value) {
   return amount.toFixed(2);
 }
 
-// 财务页面需要的是全量订单聚合；订单管理页的 state.orders 只保存当前一页，
-// 直接复用会导致利润/采购只统计到当前页（曾因此看起来「数据丢失」）。
+// 财务页面需要的是全量订单聚合；订单管理页的 state.orders 只保存当前一页。
+//
+// 这里**不做**任何「回退到当前页」：一旦全量拉取失败而回退，利润/采购总额就会变成
+// 「当前页之和」却被当成全站总额展示——正是旧注释警告的「看起来像数据丢失」那个现象。
+// 失败时宁可聚合为空，并由 financeProfitMessage 明确说明加载失败。
+//
+// 标志位刻意留在本模块而不是 shared/core/state.js：state.js 目前没有 ?v= 缓存串，
+// 放进那里会与浏览器缓存的旧版本产生语义错配（新字段被读成 undefined）。
+let financeOrdersLoaded = false;
+let financeOrdersError = "";
+
 function getFinanceOrders() {
-  return Array.isArray(state.financeOrders) && state.financeOrders.length
-    ? state.financeOrders
-    : (state.orders || []);
+  return Array.isArray(state.financeOrders) ? state.financeOrders : [];
 }
 
 async function loadFinanceOrders() {
   if (!can("orderRead")) {
     state.financeOrders = [];
+    financeOrdersLoaded = false;
+    financeOrdersError = "";
     return false;
   }
   const result = await apiRequest("/api/orders", { method: "GET" });
-  state.financeOrders = result.ok && Array.isArray(result.data?.items)
-    ? result.data.items.map(normalizeOrderForView)
-    : [];
-  return result.ok;
+  const loaded = result.ok && Array.isArray(result.data?.items);
+  state.financeOrders = loaded ? result.data.items.map(normalizeOrderForView) : [];
+  financeOrdersLoaded = Boolean(loaded);
+  financeOrdersError = loaded ? "" : String(result.error || "全量订单加载失败");
+  return Boolean(loaded);
 }
 
 function applyFinanceProfitFallback() {
@@ -269,11 +279,18 @@ function buildFinanceProfitView() {
   if (financeProfitTotalRmb) financeProfitTotalRmb.textContent = formatFinanceMoney(totalRmb);
   if (financeProfitTotalRub) financeProfitTotalRub.textContent = formatFinanceMoney(totalRub);
   if (financeProfitMessage) {
-    financeProfitMessage.style.color = "#2f3d63";
-    const filtered = Boolean(orderNoText || skuText || receiptCodeText || profitMinText !== "" || profitMaxText !== "");
-    financeProfitMessage.textContent = rows.length
-      ? `当前按 ${rows.length}${filtered ? ` / ${matchedRows.length}` : ""} 条命中规则的订单计算利润${filtered ? "（已筛选）" : ""}`
-      : (matchedRows.length ? "当前筛选条件下没有订单" : "当前还没有命中审单规则的订单");
+    if (!financeOrdersLoaded) {
+      // 全量订单没拉到：不能沿用「当前还没有命中审单规则的订单」这种听起来正常的说法，
+      // 否则运营会以为"确实没有"，而不是"统计不完整"。
+      financeProfitMessage.style.color = "#c02030";
+      financeProfitMessage.textContent = `全量订单加载失败，以下利润统计不完整：${financeOrdersError || "未知原因"}`;
+    } else {
+      financeProfitMessage.style.color = "#2f3d63";
+      const filtered = Boolean(orderNoText || skuText || receiptCodeText || profitMinText !== "" || profitMaxText !== "");
+      financeProfitMessage.textContent = rows.length
+        ? `当前按 ${rows.length}${filtered ? ` / ${matchedRows.length}` : ""} 条命中规则的订单计算利润${filtered ? "（已筛选）" : ""}`
+        : (matchedRows.length ? "当前筛选条件下没有订单" : "当前还没有命中审单规则的订单");
+    }
   }
   const pageSize = Math.max(1, Math.min(200, Number(state.financeProfitPageSize || 20) || 20));
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));

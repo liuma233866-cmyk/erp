@@ -13,7 +13,12 @@
   "scripts": {
     "start": "node backend/server.js",
     "convert:publish-prices": "node scripts/convert-publish-prices-rub-to-cny.js",
-    "test": "node --test backend/*.test.js frontend/*.test.js",
-    "test:v2": "node --test backend-v2/core/core.test.js backend-v2/security/security.test.js backend-v2/migrations/*.test.js backend-v2/central/*.test.js backend-v2/audit/audit.test.js backend-v2/http/v2Server.test.js backend-v2/db/pool.test.js frontend-v2/central/*.test.js"
+    "test": "node --test backend/*.test.js backend/*/*.test.js frontend/*.test.js",
+    "test:v2": "node --test backend-v2/core/core.test.js backend-v2/security/security.test.js backend-v2/migrations/*.test.js backend-v2/central/*.test.js backend-v2/audit/audit.test.js backend-v2/http/v2Server.test.js backend-v2/db/pool.test.js backend-v2/collection/*.test.js backend-v2/publish/*.test.js frontend-v2/central/*.test.js",
+    "smoke": "node scripts/smoke-e2e.cjs",
+    "smoke:mock": "node scripts/smoke-e2e.cjs --skip-phase-a",
+    "smoke:readonly": "node scripts/smoke-e2e.cjs --skip-sync",
+    "db:divergence": "node scripts/persistence-divergence.cjs",
+    "db:drop-legacy-publish": "node scripts/migrate-legacy-publish-tables.cjs"
   }
 }

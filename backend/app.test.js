@@ -23,6 +23,11 @@ process.env.DEFAULT_ADMIN_USERNAME = TEST_ADMIN_USERNAME;
 process.env.DEFAULT_ADMIN_PASSWORD = TEST_ADMIN_PASSWORD;
 process.env.TRUST_PROXY = "0";
 
+// --test-isolation=none 会把所有测试文件放进同一个进程，而别的文件（log-checker /
+// shop-enabled-flag）可能已经先 require 过 ./server。server.js 在**模块作用域**捕获
+// MYSQL_DATABASE，一旦模块进了缓存，上面设置的测试库就不会生效，before() 里的
+// initializeAppRuntime() 会连到生产库并把测试数据写进去。先清缓存，保证本文件的环境生效。
+delete require.cache[require.resolve("./server")];
 const serverModule = require("./server");
 const mysql = require("mysql2/promise");
 const { createPasswordHash } = require("./security");
@@ -139,15 +144,42 @@ test("POST /api/login issues a token and /api/profile accepts it", async (t) => 
   assert.equal(profile.json.username, TEST_ADMIN_USERNAME);
 });
 
-test("GET /api/orders requires a token and works with one", async (t) => {
+test("GET /api/orders 与 /api/orders/summary 需要 token，且两者看到同一批订单", async (t) => {
   if (skipIfUnavailable(t)) return;
   const unauthenticated = await apiFetch("GET", "/api/orders", null);
   assert.equal(unauthenticated.status, 401);
+  const unauthenticatedSummary = await apiFetch("GET", "/api/orders/summary", null);
+  assert.equal(unauthenticatedSummary.status, 401);
 
+  // 这里刻意复用同一次登录：登录限流按用户名计，admin 的额度已被其他用例占去大半，
+  // 额外再登录一次会把后面的用例打成 401。
   const login = await apiFetch("POST", "/api/login", null, { username: TEST_ADMIN_USERNAME, password: TEST_ADMIN_PASSWORD });
   const orders = await apiFetch("GET", "/api/orders", login.json.token);
   assert.equal(orders.status, 200);
   assert.ok(orders.json && typeof orders.json === "object");
+
+  // 仪表盘聚合接口：前端因此不再下载整张 orders 表（见 backend/order-summary.js 顶部说明），
+  // 所以它的取数范围必须与列表接口完全一致，否则仪表盘的数字会和订单列表对不上。
+  const summary = await apiFetch("GET", "/api/orders/summary", login.json.token);
+  assert.equal(summary.status, 200);
+  const { summary: stats, platforms } = summary.json;
+  assert.ok(stats && Array.isArray(platforms), "应返回 summary 与 platforms");
+  assert.equal(stats.total, orders.json.items.length, "聚合的订单数必须等于列表接口返回的订单数");
+
+  const all = platforms.find((bucket) => bucket.key === "all");
+  assert.ok(all, "必须包含 all 平台");
+  assert.equal(all.count, stats.total);
+  assert.deepEqual(platforms.map((bucket) => bucket.key), ["all", "yandex", "ozon", "other"]);
+  for (const bucket of platforms) {
+    assert.ok(Number.isFinite(bucket.amountRub), `${bucket.key} 的 amountRub 不得为 NaN`);
+    for (const period of ["day", "week", "month"]) {
+      const series = bucket.series[period];
+      assert.ok(series && Array.isArray(series.labels), `${bucket.key}/${period} 缺少序列`);
+      assert.equal(series.orderSeries.length, series.labels.length);
+      assert.equal(series.paidSeries.length, series.labels.length);
+      assert.equal(series.refundSeries.length, series.labels.length);
+    }
+  }
 });
 
 test("POST /api/register stays disabled (403)", async (t) => {
@@ -690,4 +722,43 @@ test("review rules reject unauthenticated access", async (t) => {
 
   const noAuthCreate = await apiFetch("POST", "/api/review-rules", null, { name: "越权规则" });
   assert.equal(noAuthCreate.status, 401);
+});
+
+// 本用例会再跑一次 initializeAppRuntime()（完整重放启动 hydrate），因此放在文件最后，
+// 避免重置前面测试已播种到内存的用户/店铺。
+test("order_purchases 在启动时回填进 db.orderPurchaseOverrides（延迟采购单不再随重启失效）", async (t) => {
+  if (skipIfUnavailable(t)) return;
+
+  const orderRef = `ORD-DEFERRED-${Date.now().toString(36)}`;
+  const now = new Date().toISOString();
+  const conn = await mysql.createConnection({
+    host: process.env.MYSQL_HOST,
+    port: Number(process.env.MYSQL_PORT || 3306),
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: TEST_DB
+  });
+  try {
+    // 直接写表：模拟「为尚未同步到的订单先登记采购信息」（routes/orders.js 的 deferred 分支）。
+    await conn.execute(
+      `INSERT INTO order_purchases (
+         orderRef, orderId, shopOrderNo, purchasePlatform, purchaseLink, purchaseOrderNo,
+         purchaseExpressNo, purchaseIntlNo, purchasePriceRmb, purchasePriceRub, purchaseUpdatedAt, updatedAt
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [orderRef, orderRef, orderRef, "taobao", "https://example.com/deferred", "PO-DEFERRED", "", "", "12.5", "150", now, now]
+    );
+  } finally {
+    await conn.end();
+  }
+
+  // 只重跑这段 hydrate，而不是重启整个运行时：重启必须先 closeAppRuntime()，
+  // 那会关掉 --test-isolation=none 下同进程其他测试文件共用的连接池，导致间歇性失败。
+  await serverModule.hydrateOrderPurchaseOverridesFromSql();
+
+  const overrides = serverModule.exportOrderPurchaseOverridesForTest();
+  const found = overrides.find((item) => item.orderRef === orderRef);
+  assert.ok(found, `启动回填应包含 ${orderRef}，实际回填 ${overrides.length} 条`);
+  assert.equal(found.purchasePlatform, "taobao");
+  assert.equal(found.purchaseOrderNo, "PO-DEFERRED");
+  assert.equal(found.purchasePriceRmb, "12.5");
 });

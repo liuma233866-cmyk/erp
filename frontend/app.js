@@ -33,6 +33,7 @@ function bindEvents() {
   bindAiEvents();
   bindReviewRulesEvents();
   bindYandexRateEvents();
+  bindProductDevEvents();
 
   if (loginForm) loginForm.addEventListener("submit", onLoginSubmit);
   if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebar);

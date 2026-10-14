@@ -4,9 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>爆单兽erp</title>
+    <!-- 此前没有任何 rel="icon"，于是浏览器每次都会去请求 /favicon.ico 并拿到 404。 -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261008" />
     <link rel="stylesheet" href="shared/base.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/users/users.css?v=20260920-css-safe" />
-    <link rel="stylesheet" href="pages/orders/orders.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/orders/orders.css?v=20261011-order-estwrap" />
     <link rel="stylesheet" href="pages/reports/reports.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/shops/shops.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/ai/ai.css?v=20260920-css-safe" />
@@ -22,6 +24,7 @@
     <link rel="stylesheet" href="pages/yandex-rates/yandex-rates.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/finance/finance.css?v=20260920-css-safe" />
     <link rel="stylesheet" href="pages/product-list/product-list.css?v=20260920-css-safe" />
+    <link rel="stylesheet" href="pages/product-dev/product-dev.css?v=20261011-nowrap-title" />
   </head>
   <body class="app-booting">
     <div id="authView" class="login-view">
@@ -84,6 +87,7 @@
                 <li><button class="side-link sub" data-view="productListPanel">产品列表</button></li>
                 <li><button class="side-link sub" data-view="productOnlinePanel">Yandex产品库</button></li>
                 <li><button class="side-link sub" data-view="ozonProductPanel">Ozon产品库</button></li>
+                <li><button class="side-link sub" data-view="skuLinksPanel">SKU关系管理</button></li>
               </ul>
             </li>
             <li class="side-group">
@@ -103,6 +107,7 @@
             <li><button class="side-link" data-view="apiPanel"><span class="side-icon">🔄</span><span class="side-text">店铺管理</span></button></li>
             <li><button class="side-link" data-view="messagesPanel"><span class="side-icon">💬</span><span class="side-text">消息管理</span></button></li>
             <li><button class="side-link" data-view="warehousePanel"><span class="side-icon">🏬</span><span class="side-text">仓库管理</span></button></li>
+            <li><button class="side-link" data-view="productDevPanel"><span class="side-icon">🧪</span><span class="side-text">商品管理</span></button></li>
             <li class="side-group">
               <button class="side-link side-group-toggle" data-submenu="systemSubmenu">
                 <span class="side-icon">⚙️</span><span class="side-text">系统管理</span>
@@ -129,7 +134,7 @@
             <li><button class="side-link" data-view="logsPanel"><span class="side-icon">🧾</span><span class="side-text">日志</span></button></li>
           </ul>
           <div class="sidebar-footer">
-            <button id="sidebarToggle" class="sidebar-toggle sidebar-toggle-bottom" type="button" aria-label="切换侧边栏">
+              <button id="sidebarToggle" class="sidebar-toggle sidebar-toggle-bottom" type="button" aria-label="切换侧边栏">
               <span class="side-icon" aria-hidden="true">☰</span>
             </button>
           </div>
@@ -149,6 +154,7 @@
 <!--#include file="pages/online-products/online-products.html" -->
 
 <!--#include file="pages/ozon-products/ozon-products.html" -->
+<!--#include file="pages/sku-links/sku-links.html" -->
 
 <!--#include file="pages/orders/orders.html" -->
 
@@ -190,6 +196,8 @@
 <!--#include file="pages/finance/finance-bill.html" -->
 
 <!--#include file="pages/warehouse/warehouse.html" -->
+
+<!--#include file="pages/product-dev/product-dev.html" -->
 
 <!--#include file="pages/review-rules/review-rules.html" -->
 
@@ -347,6 +355,7 @@
           </div>
 
 <!--#include file="pages/commissions/yandex-commission.html" -->
+<!--#include file="pages/commissions/system-category.html" -->
 
 <!--#include file="pages/commissions/ozon-commission.html" -->
 
@@ -420,7 +429,7 @@
               <div class="modal-head">
                 <div class="modal-title">
                   <h3 id="aiImageTaskFormTitle">新建 AI 图任务</h3>
-                  <p class="small">先填源图，再选模型；保存后可以直接排队。</p>
+            <p class="small">先填源图，再选模型；保存后可以直接排队。</p>
                 </div>
                 <button id="closeAiImageTaskModalBtn" class="secondary-btn" type="button">取消</button>
               </div>
@@ -495,7 +504,7 @@
                 <figure>
                   <figcaption>源图</figcaption>
                   <img id="aiImageTaskResultSourceImage" alt="任务源图" />
-                  <p id="aiImageTaskResultSourceEmpty" class="small-text hidden">未提供源图</p>
+              <p id="aiImageTaskResultSourceEmpty" class="small-text hidden">未提供源图</p>
                 </figure>
                 <figure>
                   <figcaption>处理结果</figcaption>
@@ -557,7 +566,7 @@
               <form id="purchaseForm" class="purchase-form">
                 <div class="purchase-field">
                   <label for="purchasePlatform">采购平台</label>
-                  <input id="purchasePlatform" type="text" placeholder="例如 1688/淘宝/拼多多" />
+              <input id="purchasePlatform" type="text" placeholder="例如 1688/淘宝/拼多多" />
                 </div>
                 <div class="purchase-field">
                   <label for="purchaseLink">采购链接</label>
@@ -569,11 +578,11 @@
                 </div>
                 <div class="purchase-field">
                   <label for="purchaseIntlNo">采购运单号</label>
-                  <input id="purchaseIntlNo" type="text" placeholder="运单号" />
+              <input id="purchaseIntlNo" type="text" placeholder="运单号" />
                 </div>
                 <div class="purchase-field">
                   <label for="purchasePriceRmb">采购价格人民币</label>
-                  <input id="purchasePriceRmb" type="number" step="0.01" min="0" placeholder="人民币" />
+              <input id="purchasePriceRmb" type="number" step="0.01" min="0" placeholder="人民币" />
                 </div>
                 <div class="purchase-field">
                   <label for="purchasePriceRub">采购价格卢布</label>
@@ -591,7 +600,7 @@
               <div class="modal-head">
                 <div class="modal-title">
                   <h3 id="orderSyncModalTitle">订单同步设置</h3>
-                  <p class="subtle">可按时间区间、店铺或指定订单号精确同步。</p>
+              <p class="subtle">可按时间区间、店铺或指定订单号精确同步。</p>
                 </div>
                 <button id="closeOrderSyncModalBtn" class="icon-btn" type="button" aria-label="关闭">×</button>
               </div>
@@ -717,7 +726,7 @@
               <div class="modal-head">
                 <div class="modal-title">
                   <h3 id="publishSettingsModalTitle">产品上架设置</h3>
-                  <p class="small">控制 ERP 自动发布和模拟后台上架规则。</p>
+              <p class="small">控制 ERP 自动发布和模拟后台上架规则。</p>
                 </div>
                 <button id="closePublishSettingsModalBtn" type="button" class="secondary-btn">关闭</button>
               </div>
@@ -815,7 +824,7 @@
               <div class="modal-head">
                 <div class="modal-title">
                   <h3 id="publishImportModalTitle">导入产品</h3>
-                  <p class="small">先下载模板填写，再上传导入文件。</p>
+              <p class="small">先下载模板填写，再上传导入文件。</p>
                 </div>
                 <button id="closePublishImportModalBtn" type="button" class="secondary-btn">关闭</button>
               </div>
@@ -863,7 +872,7 @@
               <div class="modal-head">
                 <div class="modal-title">
                   <h3 id="onlineCopyPublishModalTitle">复制在线产品到刊登</h3>
-                  <p id="onlineCopyPublishSelectionInfo" class="small">已选择 0 条在线产品</p>
+              <p id="onlineCopyPublishSelectionInfo" class="small">已选择 0 条在线产品</p>
                 </div>
                 <button id="closeOnlineCopyPublishModalBtn" type="button" class="secondary-btn">关闭</button>
               </div>
@@ -904,7 +913,7 @@
                   <input id="onlineCopyPublishDryRun" type="checkbox" />
                   <span>先预览，不写入</span>
                 </label>
-                <p id="onlineCopyPublishMessage" class="message small">只复制为刊登草稿，不会立即发布到平台。</p>
+              <p id="onlineCopyPublishMessage" class="message small">只复制为刊登草稿，不会立即发布到平台。</p>
                 <div id="onlineCopyPublishPreview" class="message small hidden"></div>
                 <div class="modal-actions">
                   <button id="cancelOnlineCopyPublishBtn" type="button" class="secondary-btn">取消</button>
@@ -1071,35 +1080,38 @@
       </div>
     </div>
 
-    <script src="shared/core/state.js"></script>
-    <script src="shared/core/api.js"></script>
-    <script src="shared/core/router.js?v=20260920-router-skeleton"></script>
+    <script src="shared/core/state.js?v=20261008-cache-bust"></script>
+    <script src="shared/core/api.js?v=20261008-cache-bust"></script>
+    <script src="shared/core/router.js?v=20261008-server-summary"></script>
     <script src="shared/core/permissions.js?v=20260920-role-visibility"></script>
-    <script src="shared/core/auth.js"></script>
-    <script src="shared/core/ui.js?v=20260920-ui-chart-consts"></script>
+    <script src="shared/core/auth.js?v=20261008-cache-bust"></script>
+    <script src="shared/core/ui.js?v=20261008-audit-labels"></script>
     <script src="shared/core/safe-image-url.js?v=20260816-img-src-allowlist"></script>
     <script src="shared/core/profit-estimate.js?v=20260810-platform-estimate"></script>
     <script src="shared/core/currency.js?v=20260920-currency-2"></script>
+    <script src="shared/core/pdev-sku-index.js?v=20261016-shared-sku-index"></script>
     <script src="pages/profit-view/profit-view.js?v=20260920-profit-view"></script>
     <script src="pages/profit-detail/profit-detail.js?v=20260920-dom-sink"></script>
-    <script src="pages/orders/orders.js?v=20260920-dom-sink"></script>
+    <script src="pages/orders/orders.js?v=20261016-commission"></script>
     <script src="pages/publish/multi-platform-publish.js?v=20260729a"></script>
     <script src="pages/logs/logs.js?v=20260920-dom-sink"></script>
     <script src="pages/messages/messages.js?v=20260920-dom-sink"></script>
-    <script src="pages/users/users.js?v=20260920-dom-sink"></script>
+    <script src="pages/users/users.js?v=20261008-dom-safety"></script>
     <script src="pages/shops/shops.js?v=20260920-dom-sink"></script>
-    <script src="pages/product-list/product-list.js?v=20260920-dom-sink"></script>
-    <script src="pages/reports/reports.js?v=20260920-dom-sink"></script>
-    <script src="pages/finance/finance.js?v=20260920-dom-sink"></script>
+    <script src="pages/product-list/product-list.js?v=20261012-fix-global-dup"></script>
+    <script src="pages/sku-links/sku-links.js?v=20261015-log-col"></script>
+    <script src="pages/reports/reports.js?v=20261008-server-summary"></script>
+    <script src="pages/finance/finance.js?v=20261007-honest-fallback"></script>
     <script src="pages/commissions/commissions.js?v=20260920-dom-sink"></script>
-    <script src="pages/ai/ai.js?v=20260920-dom-sink"></script>
+    <script src="pages/ai/ai.js?v=20261014-sku-label"></script>
     <script src="pages/category-mapping/category-mapping.js?v=20260920-dom-sink"></script>
     <script src="pages/review-rules/review-rules.js?v=20260920-review-rules"></script>
-    <script src="pages/yandex-rates/yandex-rates.js"></script>
-    <script src="pages/online-products/online-products.js?v=20260920-dom-sink"></script>
-    <script src="pages/publish/publish.js?v=20260920-dom-sink"></script>
-    <script src="pages/collection-box/collection-box.js?v=20260925-ui2"></script>
+    <script src="pages/yandex-rates/yandex-rates.js?v=20261008-cache-bust"></script>
+    <script src="pages/online-products/online-products.js?v=20261013-fixcol2"></script>
+    <script src="pages/publish/publish.js?v=20261007-selection-and-confirm"></script>
+    <script src="pages/collection-box/collection-box.js?v=20261014-sku-label"></script>
     <script src="pages/publish-records/publish-records.js?v=20260925-ui2"></script>
+    <script src="pages/product-dev/product-dev.js?v=20261011-detail-urlver"></script>
     <script src="app.js?v=20260920-dom-sink"></script>
   </body>
 </html>

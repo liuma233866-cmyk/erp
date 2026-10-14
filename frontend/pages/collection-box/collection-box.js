@@ -147,7 +147,7 @@ function renderCollectionBoxTable() {
             </div>
             <div class="product-info">
               <div class="product-title clamp-2">${escapeHtml(item.title || "-")}</div>
-              <div class="product-sub">SKU: ${escapeHtml(item.sku || "-")}</div>
+              <div class="product-sub">店铺SKU: ${escapeHtml(item.sku || "-")}</div>
             </div>
           </div>
         </td>

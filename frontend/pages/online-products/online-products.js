@@ -1,3 +1,15 @@
+// 商品管理（pdev）SKU 索引 + SKU关系管理 绑定关系索引：用于产品库显示「商品SKU」
+// 【task-15】取数顺序 = **绑定关系优先、同码兜底**：
+//   ① GET /api/product-dev/products → publicId(lower) → { sku, purchasePrice }（同码兜底 + 采购价来源）
+//   ② GET /api/pdev-links          → offerId / marketSku / onlineProductId（lower + trim）
+//                                      → { sku: pdevSku, purchasePrice }，后写入 = 绑定优先（覆盖①同 key 项）
+//   ③ 两条都没有 → 返回 ""（页面显示 -）
+// 【task-26】索引已抽到 shared/core/pdev-sku-index.js（单一命名空间 window.PdevSkuIndex）：
+//   以前 orders.js / product-list.js / online-products.js 各自一份同名裸全局、互相覆盖；
+//   这里只留薄封装：索引变量与加载函数都收进共享命名空间，本文件不再有同名的裸全局。
+function pdevSkuFor(shopSku) {
+  return window.PdevSkuIndex ? window.PdevSkuIndex.skuFor(shopSku) : "";
+}
 // 从 app.js 拆出的在线产品模块（Yandex 在线产品 + Ozon 产品，classic script，全局作用域）。
 
 
@@ -125,13 +137,21 @@ async function onRefreshCardQuality() {
   }
 }
 
+// 加载失败不能塌缩成空列表：空列表会被 renderOnlineCommissionUnmatched() 渲染成
+// 「当前全部商品都已匹配佣金」这句成功断言，于是 500/401 看起来像「合规检查通过」。
+// 错误信息留在本模块（与 finance.js 同理，避免依赖没有 ?v= 缓存串的 state.js）。
+let onlineCommissionError = "";
+
 async function loadOnlineCommissionUnmatched() {
   if (!can("productRead")) {
     state.onlineCommissionUnmatched = [];
+    onlineCommissionError = "";
     return;
   }
   const result = await apiRequest("/api/online-products/commission-unmatched", { method: "GET" });
-  state.onlineCommissionUnmatched = result.ok && Array.isArray(result.data?.items) ? result.data.items : [];
+  const loaded = result.ok && Array.isArray(result.data?.items);
+  state.onlineCommissionUnmatched = loaded ? result.data.items : [];
+  onlineCommissionError = loaded ? "" : String(result.error || "加载失败");
 }
 
 function renderOnlineCommissionUnmatched() {
@@ -140,8 +160,13 @@ function renderOnlineCommissionUnmatched() {
   if (!items.length) {
     onlineCommissionTableBody.innerHTML = "<tr><td colspan='5'>暂无未匹配佣金商品</td></tr>";
     if (onlineCommissionMessage) {
-      onlineCommissionMessage.style.color = "#1d6f3a";
-      onlineCommissionMessage.textContent = "当前全部商品都已匹配佣金";
+      if (onlineCommissionError) {
+        onlineCommissionMessage.style.color = "#c02030";
+        onlineCommissionMessage.textContent = `佣金匹配状态加载失败，无法判断是否已全部匹配：${onlineCommissionError}`;
+      } else {
+        onlineCommissionMessage.style.color = "#1d6f3a";
+        onlineCommissionMessage.textContent = "当前全部商品都已匹配佣金";
+      }
     }
     return;
   }
@@ -720,7 +745,8 @@ function renderOzonProducts() {
     return `
       <tr>
         <td>${imageUrl ? `<img class="product-thumb small" src="${escapeHtml(safeImageUrl(imageUrl))}" alt="${escapeHtml(title)}" loading="lazy" referrerpolicy="no-referrer" />` : "-"}</td>
-        <td><strong>${escapeHtml(title)}</strong><div class="small-text">SKU: ${escapeHtml(sku)}</div></td>
+        <td><strong>${escapeHtml(title)}</strong><div class="small-text">店铺SKU: ${escapeHtml(sku)}</div>
+          <div class="small-text">商品SKU: <span data-pdev-sku-cell data-shop-sku="${escapeHtml(sku)}">${escapeHtml(pdevSkuFor(sku) || "-")}</span></div></td>
         <td>${escapeHtml(status)}</td>
         <td>${escapeHtml(formatOzonMoney(item.salePrice ?? item.price))}</td>
         <td>${escapeHtml(formatOzonMoney(item.originalPrice ?? item.oldPrice))}</td>
@@ -824,7 +850,8 @@ function renderOnlineProducts() {
                 <div class="product-sub">
                   <div>合并编号: ${escapeHtml(mergedCode || "-")}</div>
                   <div>平台SKU: ${escapeHtml(platformSku)}</div>
-                  <div>SKU: ${escapeHtml(skuText)}</div>
+                  <div>店铺SKU: ${escapeHtml(skuText)}</div>
+          <div>商品SKU: <span data-pdev-sku-cell data-shop-sku="${escapeHtml(skuText)}">${escapeHtml(pdevSkuFor(skuText) || "-")}</span></div>
                   <div>类目: ${escapeHtml(categoryText)}</div>
                   <div class="online-source-row">货源:
                     ${
@@ -1191,9 +1218,12 @@ function onOnlineInvertSelect() {
   syncOnlineSelectionUi();
 }
 
+// 选择集必须收敛到「当前筛选后可见」的行：否则运营筛选出 3 条去核对，批量删除/改库存实际
+// 作用在另外 N 条已隐藏的行上，计数还会显示「已选 20 / 3 条」这种自相矛盾的数字。
+// 注意是按**筛选结果**收敛、不是按当前页，所以同一筛选条件下的跨页选择仍然保留。
 function pruneSelectedOnlineProducts() {
-  const ids = new Set((state.onlineProducts || []).map((item) => String(item.id)));
-  state.onlineSelectedIds = (state.onlineSelectedIds || []).filter((id) => ids.has(String(id)));
+  const visible = new Set((state.onlineFilteredProducts || []).map((item) => String(item.id)));
+  state.onlineSelectedIds = (state.onlineSelectedIds || []).filter((id) => visible.has(String(id)));
 }
 
 function syncOnlineSelectionUi() {
@@ -1245,8 +1275,7 @@ function onOnlineInventoryMaskClick(event) {
   if (event.target === onlineInventoryModalMask) closeOnlineInventoryModal();
 }
 
-async function onOnlineInventorySubmit(event) {
-  event.preventDefault();
+async function applyOnlineInventoryDelta() {
   if (!onlineInventoryForm) return;
   const form = new FormData(onlineInventoryForm);
   const deltaRaw = form.get("delta");
@@ -1291,6 +1320,25 @@ async function onOnlineInventorySubmit(event) {
   }
   closeOnlineInventoryModal();
   await loadOnlineProducts({ keepMessage: true });
+}
+
+// 在途守卫：接口是 { ids, delta } 的增量更新，双击或慢请求重复提交会把库存加两次。
+// 第二次直接报错返回，不再发请求。
+async function onOnlineInventorySubmit(event) {
+  event.preventDefault();
+  if (isUpdatingInventory) {
+    if (onlineInventoryMessage) {
+      onlineInventoryMessage.style.color = "#c02030";
+      onlineInventoryMessage.textContent = "正在更新库存，请勿重复提交";
+    }
+    return;
+  }
+  isUpdatingInventory = true;
+  try {
+    await applyOnlineInventoryDelta();
+  } finally {
+    isUpdatingInventory = false;
+  }
 }
 
 async function onOnlineBatchDelete() {
@@ -1641,6 +1689,8 @@ let isDraggingOnlineScrollbar = false;
 let onlineScrollbarDragStartX = 0;
 let onlineScrollbarDragStartLeft = 0;
 let activeOnlineSourceProductId = "";
+// 在途守卫（防重复提交）：批量库存是增量操作，重复提交会把库存加两次。
+let isUpdatingInventory = false;
 
 function bindOnlineProductsEvents() {
   if (syncOnlineProductsBtn) syncOnlineProductsBtn.addEventListener("click", onSyncOnlineProducts);
